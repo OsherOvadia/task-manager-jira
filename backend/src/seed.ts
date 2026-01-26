@@ -1,5 +1,8 @@
 import db from './database';
 import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export function seedDatabase() {
   // Create restaurant
@@ -24,26 +27,39 @@ export function seedDatabase() {
     `).run(restaurant.lastInsertRowid, status.name, status.displayName, status.color, status.order);
   });
 
-  // Create ONLY admin user - no workers, no tasks
-  db.prepare(`
-    INSERT INTO users (email, name, password, role, status, restaurant_id) VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
-    'admin@restaurant.com',
-    'מנהל ראשי',
-    bcrypt.hashSync('admin123', 10),
-    'admin',
-    'approved',
-    restaurant.lastInsertRowid
-  );
+  // Create admin user from environment variables
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminName = process.env.ADMIN_NAME || 'מנהל ראשי';
 
+  if (adminEmail) {
+    db.prepare(`
+      INSERT INTO users (email, name, password, role, status, restaurant_id) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      adminEmail,
+      adminName,
+      bcrypt.hashSync(adminPassword, 10),
+      'admin',
+      'approved',
+      restaurant.lastInsertRowid
+    );
+
+    console.log('');
+    console.log('✅ מסד נתונים אותחל בהצלחה');
+    console.log('');
+    console.log('פרטי התחברות מנהל:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`אימייל: ${adminEmail}`);
+    console.log(`סיסמה: ${adminPassword}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  } else {
+    console.log('');
+    console.log('✅ מסד נתונים אותחל בהצלחה');
+    console.log('');
+    console.log('⚠️  לא נוצר משתמש מנהל!');
+    console.log('הגדר ADMIN_EMAIL ו-ADMIN_PASSWORD בקובץ .env');
+    console.log('או השתמש בהרשמה דרך הממשק');
+  }
+  
   console.log('');
-  console.log('✅ מסד נתונים אותחל בהצלחה');
-  console.log('');
-  console.log('פרטי התחברות מנהל:');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('אימייל: admin@restaurant.com');
-  console.log('סיסמה: admin123');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('');
-  console.log('הוסף עובדים ומשימות דרך הממשק!');
 }

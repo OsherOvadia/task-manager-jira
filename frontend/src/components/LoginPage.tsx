@@ -220,25 +220,6 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* Demo Credentials - Only show on login */}
-        {isLogin && (
-          <div className="mt-8 p-4 bg-slate-800 rounded-xl border border-slate-700">
-            <p className="text-sm font-bold text-teal-400 mb-3">פרטי התחברות לדוגמה:</p>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-slate-400">
-                <span>מנהל ראשי:</span>
-                <span className="text-slate-300 font-mono text-xs" dir="ltr">admin@restaurant.com</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>עובד:</span>
-                <span className="text-slate-300 font-mono text-xs" dir="ltr">worker@restaurant.com</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-700">
-                סיסמה: password123
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
