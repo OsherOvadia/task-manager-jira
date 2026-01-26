@@ -5,35 +5,35 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Configure your email service here
-// For development, use a service like Mailtrap or Gmail
+// For cloud platforms like Railway, use port 465 with SSL
 function createTransporter() {
+  // Use port 465 with SSL for better cloud compatibility
+  const useSSL = process.env.EMAIL_SECURE === 'true' || process.env.EMAIL_PORT === '465';
+  
   const config: any = {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
+    port: parseInt(process.env.EMAIL_PORT || '465'), // Changed default to 465
+    secure: useSSL, // true for 465
     auth: {
       user: process.env.EMAIL_USER || '',
       pass: process.env.EMAIL_PASSWORD || '',
     },
     // Better timeout settings for cloud environments
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    connectionTimeout: 30000, // 30 seconds
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
     // Disable connection pooling for serverless
     pool: false,
-    // Debug logging
-    logger: process.env.NODE_ENV === 'development',
-    debug: process.env.NODE_ENV === 'development',
   };
 
-  // Try TLS settings for Gmail
-  if (config.host === 'smtp.gmail.com' && config.port === 587) {
+  // For Gmail with SSL
+  if (config.host === 'smtp.gmail.com') {
     config.tls = {
-      ciphers: 'SSLv3',
       rejectUnauthorized: false,
     };
   }
 
+  console.log(`📧 Email config: ${config.host}:${config.port} (SSL: ${config.secure})`);
   return nodemailer.createTransport(config);
 }
 
