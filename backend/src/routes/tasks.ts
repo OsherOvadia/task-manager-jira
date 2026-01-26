@@ -178,8 +178,12 @@ router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
     const oldStatus = task.status;
     
     // If task is being assigned and status is 'planned', change to 'assigned'
-    if (assigned_to && !task.assigned_to && oldStatus === 'planned' && !status) {
-      newStatus = 'assigned';
+    // Also handle case where frontend sends current status (status === oldStatus)
+    if (assigned_to && !task.assigned_to && oldStatus === 'planned') {
+      // Only auto-change if no explicit different status was requested
+      if (!status || status === 'planned') {
+        newStatus = 'assigned';
+      }
     }
 
     // Track status change
