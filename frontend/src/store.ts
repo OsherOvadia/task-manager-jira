@@ -20,6 +20,13 @@ export interface User {
   restaurant_id: number;
 }
 
+export interface Tag {
+  id: number;
+  name: string;
+  color: string;
+  color2?: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -27,13 +34,14 @@ export interface Task {
   assigned_to?: number;
   assigned_to_name?: string;
   priority: 'low' | 'medium' | 'high' | 'critical';
-  status: 'planned' | 'assigned' | 'in_progress' | 'waiting' | 'completed' | 'verified' | 'overdue';
+  status: string;
   due_date?: string;
   estimated_time?: number;
   recurrence: 'once' | 'daily' | 'weekly' | 'monthly';
   created_at: string;
   completed_at?: string;
   verified_at?: string;
+  tags?: Tag[];
 }
 
 export interface Comment {
@@ -70,7 +78,7 @@ interface AuthStore {
 
 interface TaskStore {
   tasks: Task[];
-  currentTask: (Task & { checklists: any[]; comments: Comment[]; photos: Photo[] }) | null;
+  currentTask: (Task & { checklists: any[]; comments: Comment[]; photos: Photo[]; tags?: Tag[] }) | null;
   loading: boolean;
   fetchTasks: (filters?: { status?: string; assigned_to?: number }) => Promise<void>;
   fetchTask: (id: number) => Promise<void>;

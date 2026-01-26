@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store';
-import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 

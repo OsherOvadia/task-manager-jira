@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import type { DropResult, DroppableProvided, DroppableStateSnapshot, DraggableProvided, DraggableStateSnapshot } from 'react-beautiful-dnd';
 import { useTaskStore, useAuthStore } from '../store';
 import axios from 'axios';
 
@@ -67,11 +68,11 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
 
   // Handle drag and drop
   const handleDragEnd = async (result: DropResult) => {
-    const { source, destination } = result;
+    const { source, destination, draggableId } = result as DropResult & { draggableId: string };
     if (!destination) return;
     if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
-    const taskId = parseInt(result.draggableId);
+    const taskId = parseInt(draggableId);
     const newStatus = destination.droppableId;
 
     // Optimistic update
@@ -144,7 +145,7 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
 
                 {/* Droppable Column */}
                 <Droppable droppableId={status.name}>
-                  {(provided, snapshot) => (
+                  {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
@@ -160,7 +161,7 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
 
                       {tasksByStatus[status.name]?.map((task, index) => (
                         <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                          {(provided, snapshot) => (
+                          {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
                             <div
                               ref={provided.innerRef}
                               {...provided.draggableProps}
