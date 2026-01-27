@@ -29,12 +29,25 @@ const priorityLabels: Record<string, string> = {
 };
 
 export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any) => void }) {
-  const { tasks, fetchTasks, updateTask } = useTaskStore();
+  const { tasks, fetchTasks, updateTask, deleteTask } = useTaskStore();
   const { user, token } = useAuthStore();
   const [tasksByStatus, setTasksByStatus] = useState<Record<string, any[]>>({});
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(false);
-  const [expandedStatus, setExpandedStatus] = useState<string | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<any>(null);
+
+  const isManager = user?.role === 'admin' || user?.role === 'maintainer';
+
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
+    try {
+      await deleteTask(taskToDelete.id);
+      setTaskToDelete(null);
+      fetchTasks();
+    } catch (error) {
+      console.error('שגיאה במחיקת משימה:', error);
+    }
+  };
 
   // Fetch statuses on mount
   useEffect(() => {
@@ -46,10 +59,6 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
           headers: { Authorization: `Bearer ${token}` },
         });
         setStatuses(res.data);
-        // Auto-expand first status with tasks
-        if (res.data.length > 0) {
-          setExpandedStatus(res.data[0].name);
-        }
       } catch (error) {
         console.error('שגיאה בטעינת סטטוסים:', error);
       } finally {
@@ -92,9 +101,6 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
         ...newTasksByStatus[destination.droppableId].slice(destination.index),
       ];
       setTasksByStatus(newTasksByStatus);
-      
-      // Auto-expand destination status
-      setExpandedStatus(newStatus);
     }
 
     try {
@@ -105,16 +111,12 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
     }
   };
 
-  const toggleStatus = (statusName: string) => {
-    setExpandedStatus(expandedStatus === statusName ? null : statusName);
-  };
-
   return (
-    <div className="min-h-full pb-24 max-w-2xl mx-auto">
+    <div className="min-h-full pb-24">
       {/* Header */}
       <div className="p-4 pb-2">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">לוח משימות</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">לחץ על סטטוס להרחבה, גרור משימות לשינוי סטטוס</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">גרור משימות למעלה/למטה לשינוי סטטוס, גלול ימינה/שמאלה לצפייה</p>
       </div>
 
       {loading && (
@@ -132,11 +134,10 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
         </div>
       )}
 
-      {/* Vertical Kanban Board - Status sections stacked vertically */}
+      {/* Kanban Board - Horizontal scroll per status */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="px-4 space-y-3">
+        <div className="space-y-4 px-4">
           {statuses.length > 0 && statuses.filter(s => s && s.name).map((status) => {
-            const isExpanded = expandedStatus === status.name;
             const taskCount = tasksByStatus[status.name]?.length || 0;
             
             return (
@@ -144,43 +145,41 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
                 key={status.name} 
                 className="bg-white dark:bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-sm"
               >
-                {/* Status Header - Clickable to expand/collapse */}
-                <button 
-                  onClick={() => toggleStatus(status.name)}
-                  className="w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                {/* Status Header */}
+                <div 
+                  className="p-3 flex items-center justify-between"
                   style={{ borderRightColor: status.color, borderRightWidth: '4px' }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <span 
-                      className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm" 
+                      className="w-3 h-3 rounded-full flex-shrink-0" 
                       style={{ backgroundColor: status.color }}
                     />
-                    <span className="font-bold text-slate-900 dark:text-white">{status.display_name}</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">{status.display_name}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-full text-sm font-bold text-slate-600 dark:text-slate-300">
-                      {taskCount}
-                    </span>
-                    <span className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-                      ▼
-                    </span>
-                  </div>
-                </button>
+                  <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-300">
+                    {taskCount}
+                  </span>
+                </div>
 
-                {/* Droppable Area - Expandable */}
-                <Droppable droppableId={status.name}>
+                {/* Droppable Area with Horizontal Scroll */}
+                <Droppable droppableId={status.name} direction="horizontal">
                   {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`transition-all duration-300 overflow-hidden ${
-                        isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-                      } ${snapshot.isDraggingOver ? 'bg-teal-50 dark:bg-teal-900/20' : ''}`}
+                      className={`overflow-x-auto overflow-y-hidden border-t border-slate-100 dark:border-slate-700/50 ${
+                        snapshot.isDraggingOver ? 'bg-teal-50 dark:bg-teal-900/20' : ''
+                      }`}
+                      style={{ 
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'thin',
+                      }}
                     >
-                      <div className="p-3 space-y-2 border-t border-slate-100 dark:border-slate-700/50">
+                      <div className="flex gap-3 p-3 min-h-[120px]" style={{ minWidth: 'min-content' }}>
                         {taskCount === 0 && !snapshot.isDraggingOver && (
-                          <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm">
-                            אין משימות בסטטוס זה
+                          <div className="flex items-center justify-center w-full min-w-[200px] text-slate-400 dark:text-slate-500 text-sm">
+                            אין משימות
                           </div>
                         )}
 
@@ -192,111 +191,92 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
                                 onClick={() => onTaskSelect(task)}
-                                className={`bg-slate-50 dark:bg-slate-700/70 rounded-xl p-4 cursor-pointer border border-slate-200 dark:border-transparent
-                                  hover:bg-white dark:hover:bg-slate-600/70 hover:shadow-sm active:scale-[0.98] transition-all ${
-                                  snapshot.isDragging ? 'shadow-xl ring-2 ring-teal-500 scale-102 bg-white dark:bg-slate-700' : ''
+                                className={`flex-shrink-0 w-48 bg-slate-50 dark:bg-slate-700/70 rounded-xl p-3 cursor-pointer border border-slate-200 dark:border-transparent
+                                  hover:bg-white dark:hover:bg-slate-600/70 hover:shadow-md active:scale-[0.98] transition-all ${
+                                  snapshot.isDragging ? 'shadow-xl ring-2 ring-teal-500 scale-105 bg-white dark:bg-slate-700 z-50' : ''
                                 }`}
                                 style={{
                                   ...provided.draggableProps.style,
                                   touchAction: 'none',
                                 }}
                               >
-                                <div className="flex items-start gap-3">
-                                  {/* Drag Handle Visual */}
-                                  <div className="flex flex-col gap-1 mt-1 opacity-30">
-                                    <div className="flex gap-0.5">
-                                      <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                                      <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                                    </div>
-                                    <div className="flex gap-0.5">
-                                      <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                                      <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                                    </div>
-                                    <div className="flex gap-0.5">
-                                      <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                                      <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                                    </div>
-                                  </div>
+                                {/* Header: Priority + Delete */}
+                                <div className="flex items-start justify-between gap-1 mb-2">
+                                  <span 
+                                    className="inline-block px-2 py-0.5 rounded text-[10px] font-bold text-white"
+                                    style={{ backgroundColor: priorityColors[task.priority] || '#64748b' }}
+                                  >
+                                    {priorityLabels[task.priority] || task.priority}
+                                  </span>
+                                  {isManager && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); }}
+                                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                                      title="מחק משימה"
+                                    >
+                                      🗑️
+                                    </button>
+                                  )}
+                                </div>
 
-                                  {/* Task Content */}
-                                  <div className="flex-1 min-w-0">
-                                    {/* Task Title */}
-                                    <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-2">
-                                      {task.title}
-                                    </h4>
+                                {/* Task Title */}
+                                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-2 line-clamp-2">
+                                  {task.title}
+                                </h4>
 
-                                    {/* Priority & Time */}
-                                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                                      <span 
-                                        className="px-2 py-0.5 rounded text-xs font-bold text-white"
-                                        style={{ backgroundColor: priorityColors[task.priority] || '#64748b' }}
+                                {/* Tags */}
+                                {task.tags && task.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mb-2">
+                                    {task.tags.slice(0, 2).map((tag: any) => (
+                                      <span
+                                        key={tag.id}
+                                        className="px-1.5 py-0.5 rounded text-[9px] font-medium text-white"
+                                        style={{ 
+                                          background: tag.color2 
+                                            ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
+                                            : tag.color 
+                                        }}
                                       >
-                                        {priorityLabels[task.priority] || task.priority}
+                                        {tag.name}
                                       </span>
-                                      {task.estimated_time && (
-                                        <span className="text-xs text-slate-500 dark:text-slate-400">
-                                          ⏱ {task.estimated_time} דק׳
-                                        </span>
-                                      )}
-                                      {task.tags && task.tags.length > 0 && (
-                                        <div className="flex gap-1">
-                                          {task.tags.slice(0, 2).map((tag: any) => (
-                                            <span
-                                              key={tag.id}
-                                              className="px-2 py-0.5 rounded text-xs font-medium text-white"
-                                              style={{ 
-                                                background: tag.color2 
-                                                  ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
-                                                  : tag.color 
-                                              }}
-                                            >
-                                              {tag.name}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Assignees & Due Date */}
-                                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                                      {task.assignees && task.assignees.length > 0 ? (
-                                        <div className="flex items-center gap-1">
-                                          <div className="flex -space-x-1.5 rtl:space-x-reverse">
-                                            {task.assignees.slice(0, 2).map((assignee: any) => (
-                                              <span 
-                                                key={assignee.id}
-                                                className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-[9px] text-white font-bold border border-white dark:border-slate-700"
-                                                title={assignee.name}
-                                              >
-                                                {assignee.name.charAt(0)}
-                                              </span>
-                                            ))}
-                                            {task.assignees.length > 2 && (
-                                              <span className="w-5 h-5 rounded-full bg-slate-500 flex items-center justify-center text-[9px] text-white font-bold border border-white dark:border-slate-700">
-                                                +{task.assignees.length - 2}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ) : task.assigned_to_name ? (
-                                        <span className="flex items-center gap-1">
-                                          <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-[10px] text-slate-600 dark:text-white font-bold">
-                                            {task.assigned_to_name.charAt(0)}
-                                          </span>
-                                          {task.assigned_to_name}
-                                        </span>
-                                      ) : (
-                                        <span className="text-slate-400 dark:text-slate-500">לא הוקצה</span>
-                                      )}
-                                      {task.due_date && (
-                                        <span className={`flex items-center gap-1 ${
-                                          new Date(task.due_date) < new Date() ? 'text-red-500 dark:text-red-400 font-bold' : ''
-                                        }`}>
-                                          📅 {new Date(task.due_date).toLocaleDateString('he-IL')}
-                                        </span>
-                                      )}
-                                    </div>
+                                    ))}
                                   </div>
+                                )}
+
+                                {/* Footer: Assignee & Due Date */}
+                                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-auto pt-2 border-t border-slate-200 dark:border-slate-600/50">
+                                  {task.assignees && task.assignees.length > 0 ? (
+                                    <div className="flex -space-x-1 rtl:space-x-reverse">
+                                      {task.assignees.slice(0, 2).map((assignee: any) => (
+                                        <span 
+                                          key={assignee.id}
+                                          className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-[9px] text-white font-bold border border-white dark:border-slate-700"
+                                          title={assignee.name}
+                                        >
+                                          {assignee.name.charAt(0)}
+                                        </span>
+                                      ))}
+                                      {task.assignees.length > 2 && (
+                                        <span className="w-5 h-5 rounded-full bg-slate-500 flex items-center justify-center text-[9px] text-white font-bold border border-white dark:border-slate-700">
+                                          +{task.assignees.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : task.assigned_to_name ? (
+                                    <span className="truncate max-w-[60px]">{task.assigned_to_name}</span>
+                                  ) : (
+                                    <span className="text-slate-400">—</span>
+                                  )}
+                                  
+                                  {task.due_date ? (
+                                    <span className={`${
+                                      new Date(task.due_date) < new Date() ? 'text-red-500 font-bold' : ''
+                                    }`}>
+                                      {new Date(task.due_date).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}
+                                    </span>
+                                  ) : (
+                                    <span>—</span>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -312,6 +292,40 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
           })}
         </div>
       </DragDropContext>
+
+      {/* Delete Confirmation Modal */}
+      {taskToDelete && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4" onClick={() => setTaskToDelete(null)}>
+          <div 
+            className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-4">
+              <span className="text-4xl">⚠️</span>
+              <h3 className="text-lg font-bold text-white mt-2">מחיקת משימה</h3>
+              <p className="text-slate-400 mt-2">
+                האם אתה בטוח שברצונך למחוק את המשימה "{taskToDelete.title}"?
+              </p>
+              <p className="text-red-400 text-sm mt-1">פעולה זו אינה ניתנת לביטול</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setTaskToDelete(null)}
+                className="flex-1 py-3 bg-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-600 transition-colors"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={handleDeleteTask}
+                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-500 transition-colors flex items-center justify-center gap-2"
+              >
+                <span>🗑️</span>
+                <span>מחק</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -165,11 +165,11 @@ export default function TaskDetail({ taskId, onClose, onTaskUpdate }: any) {
   const isOverdue = currentTask.due_date && new Date(currentTask.due_date) < new Date() && !['completed', 'verified'].includes(currentTask.status);
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-[60]" onClick={onClose}>
       <div 
-        className="bg-slate-800 dark:bg-slate-800 light:bg-white w-full max-h-[85vh] rounded-t-3xl overflow-hidden animate-slideUp flex flex-col"
+        className="bg-slate-800 dark:bg-slate-800 light:bg-white w-full max-h-[80vh] rounded-t-3xl overflow-hidden animate-slideUp flex flex-col mb-16"
         onClick={(e) => e.stopPropagation()}
-        style={{ willChange: 'transform', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{ willChange: 'transform' }}
       >
         {/* Header - Always visible with quick actions */}
         <div className="p-4 border-b border-slate-700/50 flex items-center gap-3 sticky top-0 bg-slate-800 z-20 backdrop-blur-lg bg-opacity-95">

@@ -107,7 +107,7 @@ export default function Dashboard() {
       {stats && (
         <div className="grid grid-cols-2 gap-3 mb-6">
           {/* Total Tasks */}
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700/50">
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-xl">
                 📋
@@ -118,7 +118,7 @@ export default function Dashboard() {
           </div>
 
           {/* Completed */}
-          <div className="bg-emerald-50 dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-emerald-200 dark:border-slate-700/50">
+          <div className="bg-emerald-50 dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-emerald-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-xl">
                 ✅
@@ -129,7 +129,7 @@ export default function Dashboard() {
           </div>
 
           {/* Pending */}
-          <div className="bg-blue-50 dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-blue-200 dark:border-slate-700/50">
+          <div className="bg-blue-50 dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-blue-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xl">
                 ⏳
@@ -140,7 +140,7 @@ export default function Dashboard() {
           </div>
 
           {/* Overdue */}
-          <div className="bg-red-50 dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-red-200 dark:border-slate-700/50">
+          <div className="bg-red-50 dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-red-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-xl">
                 ⚠️
@@ -154,7 +154,7 @@ export default function Dashboard() {
 
       {/* Completion Rate - Clean progress bar */}
       {stats && (
-        <div className="bg-teal-50 dark:bg-slate-900 rounded-2xl p-5 mb-6 shadow-sm border border-teal-200 dark:border-slate-700/50">
+        <div className="bg-teal-50 dark:bg-slate-800 rounded-2xl p-5 mb-6 shadow-sm border border-teal-200 dark:border-slate-700">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-xl">📊</span>
@@ -173,7 +173,7 @@ export default function Dashboard() {
 
       {/* Tasks by Priority */}
       {tasksByPriority.length > 0 && (
-        <div className="bg-amber-50 dark:bg-slate-900 rounded-2xl p-5 mb-6 shadow-sm border border-amber-200 dark:border-slate-700/50">
+        <div className="bg-amber-50 dark:bg-slate-800 rounded-2xl p-5 mb-6 shadow-sm border border-amber-200 dark:border-slate-700">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <span>🎯</span>
             <span>משימות לפי עדיפות</span>
@@ -199,7 +199,7 @@ export default function Dashboard() {
           <span>ביצועי עובדים</span>
         </h2>
         {staffPerformance.length === 0 ? (
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-6 text-center shadow-sm border border-slate-200 dark:border-slate-700/50">
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-6 text-center shadow-sm border border-slate-200 dark:border-slate-700">
             <p className="text-slate-400">אין נתונים להצגה</p>
             <p className="text-sm text-slate-500 mt-1">הקצה משימות לעובדים כדי לראות סטטיסטיקות</p>
           </div>
@@ -208,7 +208,7 @@ export default function Dashboard() {
             {staffPerformance.map((staff, index) => (
               <div 
                 key={staff.user_id} 
-                className="bg-slate-50 dark:bg-slate-900 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700/50"
+                className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
