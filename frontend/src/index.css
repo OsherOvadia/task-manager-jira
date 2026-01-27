@@ -185,17 +185,17 @@ input[type="checkbox"] {
 }
 
 /* ========================================
-   LIGHT MODE - Professional Clean Design
-   Inspired by Linear, Notion, Asana
+   LIGHT MODE - Clean Modern Design
+   Warm cream/beige tones for readability
    ======================================== */
 
 html.light-mode {
-  --color-bg: #f8fafc;           /* Very light gray-blue */
+  --color-bg: #faf9f7;           /* Warm cream background */
   --color-surface: #ffffff;
-  --color-text: #1e293b;         /* Slate-800 */
-  --color-text-muted: #64748b;   /* Slate-500 */
-  --color-border: #e2e8f0;       /* Slate-200 */
-  --color-border-light: #f1f5f9; /* Slate-100 */
+  --color-text: #2d3748;         /* Warm dark gray */
+  --color-text-muted: #718096;   /* Medium gray */
+  --color-border: #e8e6e1;       /* Warm border */
+  --color-border-light: #f5f4f1; /* Light warm border */
 }
 
 html.light-mode body {
@@ -205,20 +205,20 @@ html.light-mode body {
 
 /* Scrollbar for light mode */
 html.light-mode ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #f5f4f1;
 }
 
 html.light-mode ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d4d2cc;
 }
 
 html.light-mode ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #a8a5a0;
 }
 
 /* Background colors */
 html.light-mode .bg-slate-900 {
-  background-color: #f8fafc;
+  background-color: #faf9f7;
 }
 
 html.light-mode .bg-slate-800 {
@@ -226,42 +226,55 @@ html.light-mode .bg-slate-800 {
 }
 
 html.light-mode .bg-slate-800\/50 {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.95);
 }
 
 html.light-mode .bg-slate-700 {
-  background-color: #f8fafc;
+  background-color: #f5f4f1;
 }
 
 html.light-mode .bg-slate-700\/50,
 html.light-mode .bg-slate-700\/30,
 html.light-mode .bg-slate-700\/70 {
-  background-color: #f1f5f9;
+  background-color: #f0eeea;
 }
 
-/* Text colors */
+html.light-mode .bg-slate-50 {
+  background-color: #fdfcfb;
+}
+
+/* Text colors - warmer and more readable */
 html.light-mode .text-white {
-  color: #1e293b;
+  color: #1a202c;
 }
 
 html.light-mode .text-slate-300 {
-  color: #475569;
+  color: #4a5568;
 }
 
 html.light-mode .text-slate-400 {
-  color: #64748b;
+  color: #718096;
 }
 
 html.light-mode .text-slate-500 {
-  color: #94a3b8;
+  color: #a0aec0;
 }
 
-/* Border colors */
+html.light-mode .text-slate-900 {
+  color: #1a202c;
+}
+
+/* Border colors - warmer */
+html.light-mode .border-slate-100,
+html.light-mode .border-slate-200 {
+  border-color: #e8e6e1;
+}
+
 html.light-mode .border-slate-600,
 html.light-mode .border-slate-700,
 html.light-mode .border-slate-700\/50,
 html.light-mode .border-slate-600\/50 {
-  border-color: #e2e8f0;
+  border-color: #e0ded9;
 }
 
 /* Form elements */
@@ -269,79 +282,95 @@ html.light-mode input,
 html.light-mode select,
 html.light-mode textarea {
   background-color: #ffffff;
-  border-color: #e2e8f0;
-  color: #1e293b;
+  border-color: #e0ded9;
+  color: #2d3748;
 }
 
 html.light-mode input:focus,
 html.light-mode select:focus,
 html.light-mode textarea:focus {
   border-color: #0d9488;
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
 }
 
 html.light-mode input::placeholder,
 html.light-mode textarea::placeholder {
-  color: #94a3b8;
+  color: #a0aec0;
 }
 
 html.light-mode select option {
   background-color: #ffffff;
-  color: #1e293b;
+  color: #2d3748;
 }
 
-/* Cards with subtle shadows */
+/* Cards with warm shadows */
 html.light-mode .rounded-xl,
 html.light-mode .rounded-2xl {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 3px rgba(45, 55, 72, 0.06), 0 1px 2px rgba(45, 55, 72, 0.04);
 }
 
 /* Header & Navigation */
 html.light-mode header {
   background-color: #ffffff;
-  border-color: #e2e8f0;
+  border-color: #e8e6e1;
 }
 
 html.light-mode nav {
   background-color: #ffffff;
-  border-color: #e2e8f0;
+  border-color: #e8e6e1;
 }
 
 /* Buttons in light mode */
 html.light-mode .bg-slate-700:hover {
-  background-color: #e2e8f0;
+  background-color: #e8e6e1;
 }
 
 html.light-mode button.bg-slate-700 {
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: #f0eeea;
+  color: #4a5568;
 }
 
 html.light-mode button.bg-slate-700:hover {
-  background-color: #e2e8f0;
+  background-color: #e8e6e1;
 }
 
-/* Task cards hover effect */
+/* Task cards */
+html.light-mode .bg-slate-50 {
+  background-color: #fdfcfb;
+}
+
+html.light-mode .hover\:bg-white:hover {
+  background-color: #ffffff;
+}
+
 html.light-mode .hover\:bg-slate-600:hover {
-  background-color: #f1f5f9;
+  background-color: #f0eeea;
 }
 
 html.light-mode .hover\:bg-slate-600\/70:hover {
-  background-color: #e2e8f0;
+  background-color: #e8e6e1;
 }
 
 /* Modal backgrounds */
 html.light-mode .bg-black\/80 {
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: rgba(26, 32, 44, 0.5);
 }
 
-/* Teal accent adjustments for light mode */
+html.light-mode .bg-black\/60 {
+  background-color: rgba(26, 32, 44, 0.4);
+}
+
+/* Teal accent - slightly warmer */
 html.light-mode .text-teal-400 {
   color: #0d9488;
 }
 
 html.light-mode .text-teal-500 {
-  color: #14b8a6;
+  color: #0f766e;
+}
+
+html.light-mode .text-teal-600 {
+  color: #0d9488;
 }
 
 html.light-mode .bg-teal-600 {
@@ -352,9 +381,17 @@ html.light-mode .bg-teal-600:hover {
   background-color: #0f766e;
 }
 
+html.light-mode .bg-teal-50 {
+  background-color: #f0fdfa;
+}
+
 /* Progress bars */
 html.light-mode .bg-slate-100 {
-  background-color: #e2e8f0;
+  background-color: #f0eeea;
+}
+
+html.light-mode .bg-slate-200 {
+  background-color: #e8e6e1;
 }
 
 /* Active/Selected states */
@@ -362,14 +399,35 @@ html.light-mode .ring-teal-400 {
   --tw-ring-color: #14b8a6;
 }
 
+html.light-mode .ring-teal-500 {
+  --tw-ring-color: #0d9488;
+}
+
 /* Dropdown menus */
 html.light-mode .shadow-xl {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 20px rgba(45, 55, 72, 0.1), 0 2px 8px rgba(45, 55, 72, 0.06);
 }
 
 /* Status indicators */
 html.light-mode .bg-slate-600 {
-  background-color: #cbd5e1;
+  background-color: #d4d2cc;
+}
+
+/* Dashboard card backgrounds - subtle colored tints */
+html.light-mode .bg-emerald-50 {
+  background-color: #ecfdf5;
+}
+
+html.light-mode .bg-blue-50 {
+  background-color: #eff6ff;
+}
+
+html.light-mode .bg-red-50 {
+  background-color: #fef2f2;
+}
+
+html.light-mode .bg-amber-50 {
+  background-color: #fffbeb;
 }
 
 /* Icon backgrounds in cards */
@@ -389,13 +447,62 @@ html.light-mode .bg-amber-100 {
   background-color: #fef3c7;
 }
 
+html.light-mode .bg-teal-100 {
+  background-color: #ccfbf1;
+}
+
 /* Kanban specific */
 html.light-mode .bg-teal-900\/20,
 html.light-mode .bg-teal-900\/30 {
-  background-color: rgba(13, 148, 136, 0.08);
+  background-color: rgba(13, 148, 136, 0.1);
 }
 
 /* Dragging state */
 html.light-mode .shadow-2xl {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 30px rgba(45, 55, 72, 0.15);
+}
+
+/* Better text colors for readability */
+html.light-mode .text-gray-900 {
+  color: #1a202c;
+}
+
+html.light-mode .text-gray-700 {
+  color: #2d3748;
+}
+
+html.light-mode .text-gray-500 {
+  color: #718096;
+}
+
+/* Orange accent */
+html.light-mode .bg-orange-500 {
+  background-color: #ed8936;
+}
+
+html.light-mode .bg-orange-500:hover {
+  background-color: #dd6b20;
+}
+
+/* Delete button styling */
+html.light-mode .bg-red-600 {
+  background-color: #e53e3e;
+}
+
+html.light-mode .bg-red-600:hover {
+  background-color: #c53030;
+}
+
+html.light-mode .text-red-400,
+html.light-mode .text-red-500 {
+  color: #e53e3e;
+}
+
+html.light-mode .hover\:text-red-500:hover {
+  color: #c53030;
+}
+
+html.light-mode .bg-red-50,
+html.light-mode .hover\:bg-red-50:hover {
+  background-color: #fff5f5;
 }
