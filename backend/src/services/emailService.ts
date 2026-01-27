@@ -32,8 +32,10 @@ function getTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
-// From email address
-const FROM_EMAIL = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@example.com';
+// From email address - use function to get at runtime
+function getFromEmail(): string {
+  return process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@example.com';
+}
 
 export interface EmailNotification {
   recipientEmail: string;
@@ -73,7 +75,7 @@ export async function sendExpirationNotification(
     const headerText = isOverdue ? '🚨 משימה באיחור!' : '⏰ משימה עומדת לפוג';
 
     await getTransporter().sendMail({
-      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
+      from: `"מערכת ניהול משימות" <${getFromEmail()}>`,
       to: notification.recipientEmail,
       subject: subject,
       html: `
@@ -125,7 +127,7 @@ export async function sendAssignmentNotification(
 
   try {
     await getTransporter().sendMail({
-      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
+      from: `"מערכת ניהול משימות" <${getFromEmail()}>`,
       to: recipientEmail,
       subject: `📋 נוספה לך משימה חדשה: ${taskTitle}`,
       html: `
@@ -166,7 +168,7 @@ export async function sendUserApprovalEmail(
 
   try {
     await getTransporter().sendMail({
-      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
+      from: `"מערכת ניהול משימות" <${getFromEmail()}>`,
       to: recipientEmail,
       subject: '✅ בקשת ההרשמה שלך אושרה',
       html: `
@@ -214,7 +216,7 @@ export async function sendUserDenialEmail(
 
   try {
     await getTransporter().sendMail({
-      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
+      from: `"מערכת ניהול משימות" <${getFromEmail()}>`,
       to: recipientEmail,
       subject: '❌ בקשת ההרשמה שלך נדחתה',
       html: `
@@ -251,7 +253,7 @@ export async function verifyEmailConfig(): Promise<boolean> {
     const transport = getTransporter();
     await transport.verify();
     console.log('✅ Gmail SMTP email service configured and ready');
-    console.log(`   From: ${FROM_EMAIL}`);
+    console.log(`   From: ${getFromEmail()}`);
     return true;
   } catch (error: any) {
     console.error('❌ Email configuration error:', error.message);
@@ -272,7 +274,7 @@ export async function sendNewUserRegistrationNotification(
 
   try {
     await getTransporter().sendMail({
-      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
+      from: `"מערכת ניהול משימות" <${getFromEmail()}>`,
       to: adminEmail,
       subject: `🆕 בקשת הרשמה חדשה: ${newUserName}`,
       html: `
@@ -313,7 +315,7 @@ export async function sendRegistrationPendingEmail(
 
   try {
     await getTransporter().sendMail({
-      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
+      from: `"מערכת ניהול משימות" <${getFromEmail()}>`,
       to: recipientEmail,
       subject: '⏳ בקשת ההרשמה שלך התקבלה',
       html: `

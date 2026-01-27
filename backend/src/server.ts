@@ -50,8 +50,12 @@ app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   
   // Verify email configuration (async, non-blocking)
-  verifyEmailConfig().catch(() => {
-    console.log('⚠️  Email verification skipped - emails will be attempted on demand');
+  verifyEmailConfig().then((success) => {
+    if (!success) {
+      console.log('⚠️  Email service not configured - check EMAIL_* variables');
+    }
+  }).catch((error) => {
+    console.log('❌ Email verification failed:', error.message);
   });
   
   // Start background notification service
