@@ -1,28 +1,18 @@
-import { Resend } from 'resend';
+import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Ensure env vars are loaded from the correct .env file
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// Initialize Resend
-let resend: Resend | null = null;
-
-function getResend(): Resend {
-  if (!resend) {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      throw new Error('RESEND_API_KEY not configured');
-    }
-    resend = new Resend(apiKey);
-  }
-  return resend;
+// Initialize SendGrid
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
-// From email - use onboarding@resend.dev for testing (only sends to account owner email)
-// To send to any email, verify your own domain at resend.com/domains
+// From email - must be verified in SendGrid
 function getFromEmail(): string {
-  return process.env.EMAIL_FROM || 'onboarding@resend.dev';
+  return process.env.EMAIL_FROM || 'oshige2025@gmail.com';
 }
 
 export interface EmailNotification {
@@ -37,8 +27,8 @@ export interface EmailNotification {
 export async function sendExpirationNotification(
   notification: EmailNotification
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('⚠️  Email notifications disabled - SENDGRID_API_KEY not configured');
     return false;
   }
 
@@ -62,7 +52,7 @@ export async function sendExpirationNotification(
     const headerColor = isOverdue ? '#d32f2f' : '#ff9800';
     const headerText = isOverdue ? '🚨 משימה באיחור!' : '⏰ משימה עומדת לפוג';
 
-    const result = await getResend().emails.send({
+    await sgMail.send({
       from: getFromEmail(),
       to: notification.recipientEmail,
       subject: subject,
@@ -94,7 +84,7 @@ export async function sendExpirationNotification(
       `,
     });
 
-    console.log(`✉️  ${isOverdue ? 'OVERDUE' : 'Expiration'} notification sent to ${notification.recipientEmail}`, result);
+    console.log(`✉️  ${isOverdue ? 'OVERDUE' : 'Expiration'} notification sent to ${notification.recipientEmail}`);
     return true;
   } catch (error: any) {
     console.error('Failed to send expiration notification:', error.message);
@@ -108,13 +98,13 @@ export async function sendAssignmentNotification(
   assignedByName: string,
   restaurantName: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('⚠️  Email notifications disabled - SENDGRID_API_KEY not configured');
     return false;
   }
 
   try {
-    const result = await getResend().emails.send({
+    await sgMail.send({
       from: getFromEmail(),
       to: recipientEmail,
       subject: `📋 נוספה לך משימה חדשה: ${taskTitle}`,
@@ -137,7 +127,7 @@ export async function sendAssignmentNotification(
       `,
     });
 
-    console.log(`✉️  Assignment notification sent to ${recipientEmail}`, result);
+    console.log(`✉️  Assignment notification sent to ${recipientEmail}`);
     return true;
   } catch (error: any) {
     console.error('Failed to send assignment notification:', error.message);
@@ -149,13 +139,13 @@ export async function sendUserApprovalEmail(
   recipientEmail: string,
   userName: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('⚠️  Email notifications disabled - SENDGRID_API_KEY not configured');
     return false;
   }
 
   try {
-    const result = await getResend().emails.send({
+    await sgMail.send({
       from: getFromEmail(),
       to: recipientEmail,
       subject: '✅ בקשת ההרשמה שלך אושרה',
@@ -184,7 +174,7 @@ export async function sendUserApprovalEmail(
       `,
     });
 
-    console.log(`✉️  User approval email sent to ${recipientEmail}`, result);
+    console.log(`✉️  User approval email sent to ${recipientEmail}`);
     return true;
   } catch (error: any) {
     console.error('Failed to send approval email:', error.message);
@@ -197,13 +187,13 @@ export async function sendUserDenialEmail(
   userName: string,
   reason?: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('⚠️  Email notifications disabled - SENDGRID_API_KEY not configured');
     return false;
   }
 
   try {
-    const result = await getResend().emails.send({
+    await sgMail.send({
       from: getFromEmail(),
       to: recipientEmail,
       subject: '❌ בקשת ההרשמה שלך נדחתה',
@@ -223,7 +213,7 @@ export async function sendUserDenialEmail(
       `,
     });
 
-    console.log(`✉️  User denial email sent to ${recipientEmail}`, result);
+    console.log(`✉️  User denial email sent to ${recipientEmail}`);
     return true;
   } catch (error: any) {
     console.error('Failed to send denial email:', error.message);
@@ -232,21 +222,17 @@ export async function sendUserDenialEmail(
 }
 
 export async function verifyEmailConfig(): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('⚠️  Email notifications disabled - SENDGRID_API_KEY not configured');
     return false;
   }
 
   try {
-    // Just verify we can create the client
-    getResend();
-    console.log('✅ Resend email service configured and ready');
+    console.log('✅ SendGrid email service configured and ready');
     console.log(`   From: ${getFromEmail()}`);
-    console.log('   ⚠️  Note: Using onboarding@resend.dev only delivers to Resend account owner email');
-    console.log('   💡 To send to any email, verify a custom domain at resend.com/domains');
     return true;
   } catch (error: any) {
-    console.error('❌ Resend configuration error:', error.message);
+    console.error('❌ SendGrid configuration error:', error.message);
     return false;
   }
 }
@@ -257,13 +243,13 @@ export async function sendNewUserRegistrationNotification(
   newUserName: string,
   newUserEmail: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('⚠️  Email notifications disabled - SENDGRID_API_KEY not configured');
     return false;
   }
 
   try {
-    const result = await getResend().emails.send({
+    await sgMail.send({
       from: getFromEmail(),
       to: adminEmail,
       subject: `🆕 בקשת הרשמה חדשה: ${newUserName}`,
@@ -285,7 +271,7 @@ export async function sendNewUserRegistrationNotification(
       `,
     });
 
-    console.log(`✉️  New user registration notification sent to ${adminEmail}`, result);
+    console.log(`✉️  New user registration notification sent to ${adminEmail}`);
     return true;
   } catch (error: any) {
     console.error('Failed to send registration notification:', error.message);
@@ -298,13 +284,13 @@ export async function sendRegistrationPendingEmail(
   recipientEmail: string,
   userName: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log('⚠️  Email notifications disabled - SENDGRID_API_KEY not configured');
     return false;
   }
 
   try {
-    const result = await getResend().emails.send({
+    await sgMail.send({
       from: getFromEmail(),
       to: recipientEmail,
       subject: '⏳ בקשת ההרשמה שלך התקבלה',
@@ -325,7 +311,7 @@ export async function sendRegistrationPendingEmail(
       `,
     });
 
-    console.log(`✉️  Registration pending email sent to ${recipientEmail}`, result);
+    console.log(`✉️  Registration pending email sent to ${recipientEmail}`);
     return true;
   } catch (error: any) {
     console.error('Failed to send registration pending email:', error.message);
