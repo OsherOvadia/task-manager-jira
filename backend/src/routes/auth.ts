@@ -49,6 +49,15 @@ router.post('/register', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Missing required fields: email, name, password' });
     }
 
+    // Check if email already exists
+    const existingUser = db.prepare('SELECT id, status FROM users WHERE email = ?').get(email) as any;
+    if (existingUser) {
+      if (existingUser.status === 'pending') {
+        return res.status(409).json({ error: 'בקשת הרשמה עם אימייל זה כבר קיימת וממתינה לאישור' });
+      }
+      return res.status(409).json({ error: 'משתמש עם אימייל זה כבר קיים במערכת' });
+    }
+
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     // Check if admin is creating the user (has valid token)

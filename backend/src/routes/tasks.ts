@@ -225,7 +225,7 @@ router.post('/', authenticateToken, authorize(['admin', 'maintainer']), async (r
       }
     }
 
-    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as any;
     const finalAssignees = getTaskAssignees(taskId);
     res.status(201).json({ ...task, assignees: finalAssignees });
   } catch (error) {

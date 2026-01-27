@@ -1,26 +1,39 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Ensure env vars are loaded from the correct .env file
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// Initialize Resend
-let resend: Resend | null = null;
+// Create transporter
+let transporter: nodemailer.Transporter | null = null;
 
-function getResend(): Resend {
-  if (!resend) {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      throw new Error('RESEND_API_KEY not configured');
+function getTransporter(): nodemailer.Transporter {
+  if (!transporter) {
+    const host = process.env.EMAIL_HOST;
+    const port = parseInt(process.env.EMAIL_PORT || '587');
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_PASSWORD;
+
+    if (!host || !user || !pass) {
+      throw new Error('Email configuration missing: EMAIL_HOST, EMAIL_USER, and EMAIL_PASSWORD required');
     }
-    resend = new Resend(apiKey);
+
+    transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465, // true for 465, false for other ports
+      auth: {
+        user,
+        pass,
+      },
+    });
   }
-  return resend;
+  return transporter;
 }
 
-// Default from email (Resend requires verified domain or use onboarding@resend.dev for testing)
-const FROM_EMAIL = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+// From email address
+const FROM_EMAIL = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@example.com';
 
 export interface EmailNotification {
   recipientEmail: string;
@@ -34,8 +47,8 @@ export interface EmailNotification {
 export async function sendExpirationNotification(
   notification: EmailNotification
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⚠️  Email notifications disabled - Email credentials not configured');
     return false;
   }
 
@@ -59,8 +72,8 @@ export async function sendExpirationNotification(
     const headerColor = isOverdue ? '#d32f2f' : '#ff9800';
     const headerText = isOverdue ? '🚨 משימה באיחור!' : '⏰ משימה עומדת לפוג';
 
-    await getResend().emails.send({
-      from: FROM_EMAIL,
+    await getTransporter().sendMail({
+      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
       to: notification.recipientEmail,
       subject: subject,
       html: `
@@ -105,14 +118,14 @@ export async function sendAssignmentNotification(
   assignedByName: string,
   restaurantName: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⚠️  Email notifications disabled - Email credentials not configured');
     return false;
   }
 
   try {
-    await getResend().emails.send({
-      from: FROM_EMAIL,
+    await getTransporter().sendMail({
+      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
       to: recipientEmail,
       subject: `📋 נוספה לך משימה חדשה: ${taskTitle}`,
       html: `
@@ -146,14 +159,14 @@ export async function sendUserApprovalEmail(
   recipientEmail: string,
   userName: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⚠️  Email notifications disabled - Email credentials not configured');
     return false;
   }
 
   try {
-    await getResend().emails.send({
-      from: FROM_EMAIL,
+    await getTransporter().sendMail({
+      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
       to: recipientEmail,
       subject: '✅ בקשת ההרשמה שלך אושרה',
       html: `
@@ -194,14 +207,14 @@ export async function sendUserDenialEmail(
   userName: string,
   reason?: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⚠️  Email notifications disabled - Email credentials not configured');
     return false;
   }
 
   try {
-    await getResend().emails.send({
-      from: FROM_EMAIL,
+    await getTransporter().sendMail({
+      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
       to: recipientEmail,
       subject: '❌ בקשת ההרשמה שלך נדחתה',
       html: `
@@ -229,19 +242,19 @@ export async function sendUserDenialEmail(
 }
 
 export async function verifyEmailConfig(): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⚠️  Email notifications disabled - Email credentials not configured');
     return false;
   }
 
   try {
-    // Test the API key by getting domains (lightweight call)
-    const resendClient = getResend();
-    console.log('✅ Resend email service configured and ready');
+    const transport = getTransporter();
+    await transport.verify();
+    console.log('✅ Gmail SMTP email service configured and ready');
     console.log(`   From: ${FROM_EMAIL}`);
     return true;
   } catch (error: any) {
-    console.error('❌ Resend configuration error:', error.message);
+    console.error('❌ Email configuration error:', error.message);
     return false;
   }
 }
@@ -252,14 +265,14 @@ export async function sendNewUserRegistrationNotification(
   newUserName: string,
   newUserEmail: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⚠️  Email notifications disabled - Email credentials not configured');
     return false;
   }
 
   try {
-    await getResend().emails.send({
-      from: FROM_EMAIL,
+    await getTransporter().sendMail({
+      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
       to: adminEmail,
       subject: `🆕 בקשת הרשמה חדשה: ${newUserName}`,
       html: `
@@ -293,14 +306,14 @@ export async function sendRegistrationPendingEmail(
   recipientEmail: string,
   userName: string
 ): Promise<boolean> {
-  if (!process.env.RESEND_API_KEY) {
-    console.log('⚠️  Email notifications disabled - RESEND_API_KEY not configured');
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('⚠️  Email notifications disabled - Email credentials not configured');
     return false;
   }
 
   try {
-    await getResend().emails.send({
-      from: FROM_EMAIL,
+    await getTransporter().sendMail({
+      from: `"מערכת ניהול משימות" <${FROM_EMAIL}>`,
       to: recipientEmail,
       subject: '⏳ בקשת ההרשמה שלך התקבלה',
       html: `
