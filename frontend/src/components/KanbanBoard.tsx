@@ -172,7 +172,7 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
                         snapshot.isDraggingOver ? 'bg-teal-50 dark:bg-teal-900/20' : ''
                       }`}
                     >
-                      <div className="flex gap-3 p-3 min-h-[120px]" style={{ minWidth: 'min-content' }}>
+                      <div className="flex gap-3 p-4 min-h-[180px]" style={{ minWidth: 'min-content' }}>
                         {taskCount === 0 && !snapshot.isDraggingOver && (
                           <div className="flex items-center justify-center w-full min-w-[200px] text-slate-400 dark:text-slate-500 text-sm">
                             אין משימות

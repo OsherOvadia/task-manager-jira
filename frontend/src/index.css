@@ -65,32 +65,32 @@ html {
   border-radius: 4px;
 }
 
-/* Kanban horizontal scrollbar - big and visible */
+/* Kanban horizontal scrollbar - big, always visible */
 .kanban-scroll {
   scrollbar-width: auto;
-  scrollbar-color: #0d9488 #334155;
+  scrollbar-color: #0d9488 #1e293b;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   touch-action: pan-x;
+  overflow-x: scroll !important; /* Always show scrollbar */
 }
 
 .kanban-scroll::-webkit-scrollbar {
-  height: 20px;
+  height: 16px;
+  display: block !important;
 }
 
 .kanban-scroll::-webkit-scrollbar-track {
   background: #1e293b;
-  border-radius: 10px;
+  border-radius: 8px;
   margin: 0 8px;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #14b8a6, #0d9488);
-  border-radius: 10px;
-  min-width: 80px;
+  border-radius: 8px;
+  min-width: 60px;
   border: 3px solid #1e293b;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb:hover {
@@ -101,24 +101,36 @@ html {
   background: #0f766e;
 }
 
+/* Always show scrollbar on webkit browsers */
+.kanban-scroll::-webkit-scrollbar-track-piece:start {
+  background: #1e293b;
+}
+
+.kanban-scroll::-webkit-scrollbar-track-piece:end {
+  background: #1e293b;
+}
+
 /* Light mode kanban scrollbar */
 html.light-mode .kanban-scroll {
-  scrollbar-color: #0d9488 #cbd5e1;
+  scrollbar-color: #0d9488 #e2e8f0;
 }
 
 html.light-mode .kanban-scroll::-webkit-scrollbar-track {
-  background: #cbd5e1;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: #e2e8f0;
 }
 
 html.light-mode .kanban-scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #14b8a6, #0d9488);
-  border: 3px solid #cbd5e1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  border: 3px solid #e2e8f0;
 }
 
 html.light-mode .kanban-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #2dd4bf, #14b8a6);
+}
+
+html.light-mode .kanban-scroll::-webkit-scrollbar-track-piece:start,
+html.light-mode .kanban-scroll::-webkit-scrollbar-track-piece:end {
+  background: #e2e8f0;
 }
 
 /* Touch-friendly inputs */
