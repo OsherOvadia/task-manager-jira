@@ -168,12 +168,9 @@ export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`kanban-scroll overflow-x-auto overflow-y-hidden border-t border-slate-100 dark:border-slate-700/50 pb-2 ${
+                      className={`kanban-scroll overflow-x-auto overflow-y-hidden border-t border-slate-100 dark:border-slate-700/50 pb-1 ${
                         snapshot.isDraggingOver ? 'bg-teal-50 dark:bg-teal-900/20' : ''
                       }`}
-                      style={{ 
-                        WebkitOverflowScrolling: 'touch',
-                      }}
                     >
                       <div className="flex gap-3 p-3 min-h-[120px]" style={{ minWidth: 'min-content' }}>
                         {taskCount === 0 && !snapshot.isDraggingOver && (

@@ -65,32 +65,36 @@ html {
   border-radius: 4px;
 }
 
-/* Kanban horizontal scrollbar - visible and prominent */
+/* Kanban horizontal scrollbar - big and visible */
 .kanban-scroll {
   scrollbar-width: auto;
   scrollbar-color: #0d9488 #334155;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  touch-action: pan-x;
 }
 
 .kanban-scroll::-webkit-scrollbar {
-  height: 14px;
+  height: 20px;
 }
 
 .kanban-scroll::-webkit-scrollbar-track {
-  background: #334155;
-  border-radius: 8px;
-  margin: 0 12px;
-  border: 2px solid transparent;
+  background: #1e293b;
+  border-radius: 10px;
+  margin: 0 8px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, #0d9488, #14b8a6, #0d9488);
-  border-radius: 8px;
-  min-width: 60px;
-  border: 2px solid #334155;
+  background: linear-gradient(180deg, #14b8a6, #0d9488);
+  border-radius: 10px;
+  min-width: 80px;
+  border: 3px solid #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(90deg, #14b8a6, #2dd4bf, #14b8a6);
+  background: linear-gradient(180deg, #2dd4bf, #14b8a6);
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb:active {
@@ -99,21 +103,22 @@ html {
 
 /* Light mode kanban scrollbar */
 html.light-mode .kanban-scroll {
-  scrollbar-color: #0d9488 #e2e8f0;
+  scrollbar-color: #0d9488 #cbd5e1;
 }
 
 html.light-mode .kanban-scroll::-webkit-scrollbar-track {
-  background: #e2e8f0;
-  border: 2px solid transparent;
+  background: #cbd5e1;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 html.light-mode .kanban-scroll::-webkit-scrollbar-thumb {
-  background: linear-gradient(90deg, #0d9488, #14b8a6, #0d9488);
-  border: 2px solid #e2e8f0;
+  background: linear-gradient(180deg, #14b8a6, #0d9488);
+  border: 3px solid #cbd5e1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 html.light-mode .kanban-scroll::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(90deg, #14b8a6, #2dd4bf, #14b8a6);
+  background: linear-gradient(180deg, #2dd4bf, #14b8a6);
 }
 
 /* Touch-friendly inputs */
