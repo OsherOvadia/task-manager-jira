@@ -53,6 +53,7 @@ html {
 /* Custom scrollbar - minimal */
 ::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -62,6 +63,41 @@ html {
 ::-webkit-scrollbar-thumb {
   background: var(--color-primary);
   border-radius: 4px;
+}
+
+/* Kanban horizontal scrollbar - more visible */
+.kanban-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-primary) transparent;
+}
+
+.kanban-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.kanban-scroll::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  margin: 0 8px;
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, var(--color-primary), #14b8a6);
+  border-radius: 4px;
+  min-width: 40px;
+}
+
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #14b8a6, #0d9488);
+}
+
+/* Light mode kanban scrollbar */
+html.light-mode .kanban-scroll::-webkit-scrollbar-track {
+  background: rgba(100, 116, 139, 0.15);
+}
+
+html.light-mode .kanban-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #0d9488, #14b8a6);
 }
 
 /* Touch-friendly inputs */
