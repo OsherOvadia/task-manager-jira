@@ -296,13 +296,14 @@ router.get('/stats/tags', authenticateToken, authorize(['maintainer', 'admin']),
         tg.name,
         tg.color,
         tg.color2,
-        COUNT(tt.task_id) as task_count
+        COUNT(DISTINCT t.id) as task_count
       FROM tags tg
       LEFT JOIN task_tags tt ON tg.id = tt.tag_id
+      LEFT JOIN tasks t ON tt.task_id = t.id AND t.restaurant_id = ?
       WHERE tg.restaurant_id = ?
       GROUP BY tg.id
       ORDER BY task_count DESC
-    `).all(restaurantId);
+    `).all(restaurantId, restaurantId);
 
     res.json(tagsUsage);
   } catch (error) {
@@ -315,6 +316,8 @@ router.get('/stats/tasks-by-tag/:tagId', authenticateToken, authorize(['maintain
   try {
     const restaurantId = req.user?.restaurantId;
     const tagId = parseInt(req.params.tagId);
+    
+    console.log('Fetching tasks for tag:', tagId, 'restaurant:', restaurantId);
 
     const tasks = db.prepare(`
       SELECT 
@@ -343,6 +346,8 @@ router.get('/stats/tasks-by-tag/:tagId', authenticateToken, authorize(['maintain
         END,
         t.due_date ASC
     `).all(restaurantId, tagId);
+
+    console.log('Found tasks:', tasks.length);
 
     // Get assignees for each task
     const tasksWithAssignees = tasks.map((task: any) => {

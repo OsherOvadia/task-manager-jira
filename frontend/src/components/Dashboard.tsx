@@ -143,15 +143,20 @@ export default function Dashboard() {
 
   // Fetch tasks by tag
   const fetchTagTasks = async (tag: TagStats) => {
+    console.log('Fetching tasks for tag:', tag.id, tag.name);
     setSelectedTag(tag);
     setLoadingTagTasks(true);
     try {
-      const response = await axios.get(`${API_BASE}/dashboard/stats/tasks-by-tag/${tag.id}`, {
+      const url = `${API_BASE}/dashboard/stats/tasks-by-tag/${tag.id}`;
+      console.log('API URL:', url);
+      const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setTagTasks(response.data);
-    } catch (error) {
+      console.log('Response:', response.data);
+      setTagTasks(response.data || []);
+    } catch (error: any) {
       console.error('שגיאה בטעינת משימות:', error);
+      console.error('Error details:', error.response?.data || error.message);
       setTagTasks([]);
     } finally {
       setLoadingTagTasks(false);
@@ -464,21 +469,21 @@ export default function Dashboard() {
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">לחץ על תגית לצפייה במשימות</p>
           <div className="flex flex-wrap gap-2">
             {tagStats.map((tag) => (
-              <button
+              <div
                 key={tag.id}
                 onClick={() => fetchTagTasks(tag)}
-                onPointerUp={() => fetchTagTasks(tag)}
-                className="flex items-center gap-2 px-4 py-3 rounded-xl text-white text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all touch-manipulation shadow-md"
+                role="button"
+                tabIndex={0}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl text-white text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md select-none"
                 style={{ 
                   background: tag.color2 
                     ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
-                    : tag.color,
-                  WebkitTapHighlightColor: 'transparent'
+                    : tag.color
                 }}
               >
                 <span>{tag.name}</span>
                 <span className="bg-white/30 px-2 py-0.5 rounded-full text-xs">{tag.task_count}</span>
-              </button>
+              </div>
             ))}
           </div>
         </div>
