@@ -4,11 +4,16 @@ import db from '../database';
 // VAPID keys - you should set these in environment variables
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BDVge7vM17zFt4KRNYL6ec7T5pBwWjy_i2adO0GjDOod__enfciamu0xMMvWe4zvmpSezX0f2yrOS2fda_y2so0';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'gAO5WkFKYPFnzi29couSWxJKAIQuiArZcPphSGeq-xI';
-const VAPID_EMAIL = process.env.EMAIL_FROM || 'mailto:admin@example.com';
+
+// VAPID subject must be a mailto: URL
+const getVapidSubject = () => {
+  const email = process.env.EMAIL_FROM || 'admin@example.com';
+  return email.startsWith('mailto:') ? email : `mailto:${email}`;
+};
 
 // Configure web-push
 webpush.setVapidDetails(
-  VAPID_EMAIL,
+  getVapidSubject(),
   VAPID_PUBLIC_KEY,
   VAPID_PRIVATE_KEY
 );

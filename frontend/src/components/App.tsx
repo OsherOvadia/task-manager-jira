@@ -26,7 +26,7 @@ const roleLabels: Record<string, string> = {
 
 export default function App() {
   const { user, logout, token } = useAuthStore();
-  const { isSupported, isSubscribed, permission, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
+  const { isSupported, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const [currentView, setCurrentView] = useState<ViewType>('daily');
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showCreateTask, setShowCreateTask] = useState(false);
