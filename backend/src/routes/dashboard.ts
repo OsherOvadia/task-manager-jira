@@ -137,4 +137,177 @@ router.get('/stats/overdue-tasks', authenticateToken, authorize(['maintainer', '
   }
 });
 
+// Get tasks by status
+router.get('/stats/by-status', authenticateToken, authorize(['maintainer', 'admin']), (req: AuthRequest, res: Response) => {
+  try {
+    const restaurantId = req.user?.restaurantId;
+
+    const byStatus = db.prepare(`
+      SELECT 
+        status,
+        COUNT(*) as count
+      FROM tasks
+      WHERE restaurant_id = ?
+      GROUP BY status
+      ORDER BY 
+        CASE status
+          WHEN 'planned' THEN 1
+          WHEN 'assigned' THEN 2
+          WHEN 'in_progress' THEN 3
+          WHEN 'waiting' THEN 4
+          WHEN 'completed' THEN 5
+          WHEN 'verified' THEN 6
+          ELSE 7
+        END
+    `).all(restaurantId);
+
+    res.json(byStatus);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch tasks by status' });
+  }
+});
+
+// Get today's stats
+router.get('/stats/today', authenticateToken, authorize(['maintainer', 'admin']), (req: AuthRequest, res: Response) => {
+  try {
+    const restaurantId = req.user?.restaurantId;
+
+    // Tasks completed today
+    const completedToday = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE restaurant_id = ? 
+      AND status IN ('completed', 'verified')
+      AND date(updated_at) = date('now')
+    `).get(restaurantId) as any;
+
+    // Tasks due today
+    const dueToday = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE restaurant_id = ? 
+      AND date(due_date) = date('now')
+    `).get(restaurantId) as any;
+
+    // Tasks created today
+    const createdToday = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE restaurant_id = ? 
+      AND date(created_at) = date('now')
+    `).get(restaurantId) as any;
+
+    // Tasks due in next 24 hours (not completed)
+    const dueSoon = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE restaurant_id = ? 
+      AND status NOT IN ('completed', 'verified')
+      AND due_date BETWEEN datetime('now') AND datetime('now', '+1 day')
+    `).get(restaurantId) as any;
+
+    res.json({
+      completed_today: completedToday.count,
+      due_today: dueToday.count,
+      created_today: createdToday.count,
+      due_soon: dueSoon.count
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch today stats' });
+  }
+});
+
+// Get this week's stats
+router.get('/stats/weekly', authenticateToken, authorize(['maintainer', 'admin']), (req: AuthRequest, res: Response) => {
+  try {
+    const restaurantId = req.user?.restaurantId;
+
+    // Tasks completed this week
+    const completedThisWeek = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE restaurant_id = ? 
+      AND status IN ('completed', 'verified')
+      AND date(updated_at) >= date('now', '-7 days')
+    `).get(restaurantId) as any;
+
+    // Tasks created this week
+    const createdThisWeek = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE restaurant_id = ? 
+      AND date(created_at) >= date('now', '-7 days')
+    `).get(restaurantId) as any;
+
+    // Daily breakdown for the week
+    const dailyBreakdown = db.prepare(`
+      SELECT 
+        date(created_at) as date,
+        COUNT(*) as created,
+        SUM(CASE WHEN status IN ('completed', 'verified') THEN 1 ELSE 0 END) as completed
+      FROM tasks
+      WHERE restaurant_id = ? 
+      AND date(created_at) >= date('now', '-7 days')
+      GROUP BY date(created_at)
+      ORDER BY date(created_at) DESC
+    `).all(restaurantId);
+
+    res.json({
+      completed_this_week: completedThisWeek.count,
+      created_this_week: createdThisWeek.count,
+      daily_breakdown: dailyBreakdown
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch weekly stats' });
+  }
+});
+
+// Get recurring tasks stats
+router.get('/stats/recurring', authenticateToken, authorize(['maintainer', 'admin']), (req: AuthRequest, res: Response) => {
+  try {
+    const restaurantId = req.user?.restaurantId;
+
+    const recurringStats = db.prepare(`
+      SELECT 
+        recurrence,
+        COUNT(*) as count,
+        SUM(CASE WHEN status IN ('completed', 'verified') THEN 1 ELSE 0 END) as completed
+      FROM tasks
+      WHERE restaurant_id = ? AND recurrence != 'once'
+      GROUP BY recurrence
+    `).all(restaurantId);
+
+    const totalRecurring = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE restaurant_id = ? AND recurrence != 'once'
+    `).get(restaurantId) as any;
+
+    res.json({
+      total_recurring: totalRecurring.count,
+      by_type: recurringStats
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch recurring stats' });
+  }
+});
+
+// Get tags usage stats
+router.get('/stats/tags', authenticateToken, authorize(['maintainer', 'admin']), (req: AuthRequest, res: Response) => {
+  try {
+    const restaurantId = req.user?.restaurantId;
+
+    const tagsUsage = db.prepare(`
+      SELECT 
+        tg.id,
+        tg.name,
+        tg.color,
+        tg.color2,
+        COUNT(tt.task_id) as task_count
+      FROM tags tg
+      LEFT JOIN task_tags tt ON tg.id = tt.tag_id
+      WHERE tg.restaurant_id = ?
+      GROUP BY tg.id
+      ORDER BY task_count DESC
+    `).all(restaurantId);
+
+    res.json(tagsUsage);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch tags stats' });
+  }
+});
+
 export default router;

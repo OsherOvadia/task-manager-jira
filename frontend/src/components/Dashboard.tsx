@@ -10,19 +10,57 @@ interface DashboardStats {
   pending_tasks: number;
   overdue_tasks: number;
   completion_rate: number;
+  in_progress_tasks: number;
 }
 
 interface StaffPerformance {
   user_id: number;
   user_name: string;
+  user_role: string;
   total_assigned: number;
   completed: number;
+  in_progress: number;
+  overdue: number;
   completion_rate: number;
 }
 
 interface TaskByPriority {
   priority: string;
   count: number;
+  completed: number;
+  in_progress: number;
+  overdue: number;
+}
+
+interface TaskByStatus {
+  status: string;
+  count: number;
+}
+
+interface TodayStats {
+  completed_today: number;
+  due_today: number;
+  created_today: number;
+  due_soon: number;
+}
+
+interface WeeklyStats {
+  completed_this_week: number;
+  created_this_week: number;
+  daily_breakdown: { date: string; created: number; completed: number }[];
+}
+
+interface RecurringStats {
+  total_recurring: number;
+  by_type: { recurrence: string; count: number; completed: number }[];
+}
+
+interface TagStats {
+  id: number;
+  name: string;
+  color: string;
+  color2?: string;
+  task_count: number;
 }
 
 export default function Dashboard() {
@@ -30,6 +68,11 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [staffPerformance, setStaffPerformance] = useState<StaffPerformance[]>([]);
   const [tasksByPriority, setTasksByPriority] = useState<TaskByPriority[]>([]);
+  const [tasksByStatus, setTasksByStatus] = useState<TaskByStatus[]>([]);
+  const [todayStats, setTodayStats] = useState<TodayStats | null>(null);
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
+  const [recurringStats, setRecurringStats] = useState<RecurringStats | null>(null);
+  const [tagStats, setTagStats] = useState<TagStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,20 +81,40 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [statsRes, staffRes, priorityRes] = await Promise.all([
+        const [statsRes, staffRes, priorityRes, statusRes, todayRes, weeklyRes, recurringRes, tagsRes] = await Promise.all([
           axios.get(`${API_BASE}/dashboard/stats/overview`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           axios.get(`${API_BASE}/dashboard/stats/staff-performance`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get(`${API_BASE}/dashboard/stats/by-priority`, {
+          axios.get(`${API_BASE}/dashboard/stats/tasks-by-priority`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => ({ data: [] })),
+          axios.get(`${API_BASE}/dashboard/stats/by-status`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => ({ data: [] })),
+          axios.get(`${API_BASE}/dashboard/stats/today`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => ({ data: null })),
+          axios.get(`${API_BASE}/dashboard/stats/weekly`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => ({ data: null })),
+          axios.get(`${API_BASE}/dashboard/stats/recurring`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => ({ data: null })),
+          axios.get(`${API_BASE}/dashboard/stats/tags`, {
             headers: { Authorization: `Bearer ${token}` },
           }).catch(() => ({ data: [] })),
         ]);
         setStats(statsRes.data);
         setStaffPerformance(staffRes.data);
         setTasksByPriority(priorityRes.data);
+        setTasksByStatus(statusRes.data);
+        setTodayStats(todayRes.data);
+        setWeeklyStats(weeklyRes.data);
+        setRecurringStats(recurringRes.data);
+        setTagStats(tagsRes.data);
       } catch (error) {
         console.error('שגיאה בטעינת נתונים:', error);
       } finally {
@@ -95,6 +158,36 @@ export default function Dashboard() {
     critical: 'bg-red-500',
   };
 
+  const statusLabels: Record<string, string> = {
+    planned: 'מתוכנן',
+    assigned: 'הוקצה',
+    in_progress: 'בביצוע',
+    waiting: 'ממתין',
+    completed: 'הושלם',
+    verified: 'אומת',
+  };
+
+  const statusColors: Record<string, string> = {
+    planned: 'bg-slate-500',
+    assigned: 'bg-blue-500',
+    in_progress: 'bg-purple-500',
+    waiting: 'bg-amber-500',
+    completed: 'bg-teal-500',
+    verified: 'bg-emerald-500',
+  };
+
+  const recurrenceLabels: Record<string, string> = {
+    daily: 'יומי',
+    weekly: 'שבועי',
+    monthly: 'חודשי',
+  };
+
+  const roleLabels: Record<string, string> = {
+    admin: 'מנהל',
+    maintainer: 'אחראי',
+    worker: 'עובד',
+  };
+
   return (
     <div className="p-4 pb-24 max-w-2xl mx-auto">
       {/* Header */}
@@ -103,13 +196,41 @@ export default function Dashboard() {
         <p className="text-sm text-slate-500 dark:text-slate-400">סקירה כללית של ביצועי המשימות</p>
       </div>
 
+      {/* Today's Quick Stats */}
+      {todayStats && (
+        <div className="bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl p-5 mb-6 text-white shadow-lg">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+            <span>📅</span>
+            <span>היום</span>
+          </h2>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div>
+              <p className="text-2xl font-bold">{todayStats.completed_today}</p>
+              <p className="text-xs opacity-80">הושלמו</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{todayStats.due_today}</p>
+              <p className="text-xs opacity-80">ליום זה</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{todayStats.created_today}</p>
+              <p className="text-xs opacity-80">נוצרו</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-yellow-300">{todayStats.due_soon}</p>
+              <p className="text-xs opacity-80">ב-24 שעות</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Stats - Clean card design */}
       {stats && (
         <div className="grid grid-cols-2 gap-3 mb-6">
           {/* Total Tasks */}
           <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-xl">
+              <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xl">
                 📋
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400">סה"כ משימות</p>
@@ -162,11 +283,82 @@ export default function Dashboard() {
             </div>
             <p className="text-2xl font-bold text-teal-600 dark:text-teal-400">{stats.completion_rate}%</p>
           </div>
-          <div className="h-4 bg-teal-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-4 bg-teal-100 dark:bg-slate-700 rounded-full overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-500"
               style={{ width: `${stats.completion_rate}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Weekly Summary */}
+      {weeklyStats && (
+        <div className="bg-purple-50 dark:bg-slate-800 rounded-2xl p-5 mb-6 shadow-sm border border-purple-200 dark:border-slate-700">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span>📈</span>
+            <span>סיכום שבועי</span>
+          </h2>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="text-center p-3 bg-white dark:bg-slate-700 rounded-xl">
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{weeklyStats.completed_this_week}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">הושלמו השבוע</p>
+            </div>
+            <div className="text-center p-3 bg-white dark:bg-slate-700 rounded-xl">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{weeklyStats.created_this_week}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">נוצרו השבוע</p>
+            </div>
+          </div>
+          {weeklyStats.daily_breakdown.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">פירוט יומי</p>
+              {weeklyStats.daily_breakdown.slice(0, 5).map((day) => (
+                <div key={day.date} className="flex items-center justify-between text-sm bg-white dark:bg-slate-700 rounded-lg p-2">
+                  <span className="text-slate-600 dark:text-slate-300">
+                    {new Date(day.date).toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' })}
+                  </span>
+                  <div className="flex gap-3">
+                    <span className="text-blue-600 dark:text-blue-400">+{day.created}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">✓{day.completed}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tasks by Status */}
+      {tasksByStatus.length > 0 && (
+        <div className="bg-indigo-50 dark:bg-slate-800 rounded-2xl p-5 mb-6 shadow-sm border border-indigo-200 dark:border-slate-700">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span>📌</span>
+            <span>משימות לפי סטטוס</span>
+          </h2>
+          <div className="space-y-3">
+            {tasksByStatus.map((item) => {
+              const total = tasksByStatus.reduce((sum, i) => sum + i.count, 0);
+              const percentage = total > 0 ? Math.round((item.count / total) * 100) : 0;
+              return (
+                <div key={item.status}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-3 h-3 rounded-full ${statusColors[item.status] || 'bg-slate-500'}`} />
+                      <span className="text-sm text-slate-600 dark:text-slate-300">
+                        {statusLabels[item.status] || item.status}
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">{item.count}</span>
+                  </div>
+                  <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${statusColors[item.status] || 'bg-slate-500'}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -180,12 +372,75 @@ export default function Dashboard() {
           </h2>
           <div className="space-y-3">
             {tasksByPriority.map((item) => (
-              <div key={item.priority} className="flex items-center gap-3">
-                <span className={`w-3 h-3 rounded-full ${priorityColors[item.priority] || 'bg-slate-500'}`} />
-                <span className="flex-1 text-sm text-slate-600 dark:text-slate-300">
-                  {priorityLabels[item.priority] || item.priority}
-                </span>
-                <span className="text-sm font-bold text-slate-900 dark:text-white">{item.count}</span>
+              <div key={item.priority} className="bg-white dark:bg-slate-700 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-3 h-3 rounded-full ${priorityColors[item.priority] || 'bg-slate-500'}`} />
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                      {priorityLabels[item.priority] || item.priority}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-slate-900 dark:text-white">{item.count}</span>
+                </div>
+                <div className="flex gap-2 text-xs">
+                  <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded">
+                    ✓ {item.completed || 0} הושלמו
+                  </span>
+                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                    🔄 {item.in_progress || 0} בביצוע
+                  </span>
+                  {(item.overdue || 0) > 0 && (
+                    <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">
+                      ⚠️ {item.overdue} באיחור
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recurring Tasks */}
+      {recurringStats && recurringStats.total_recurring > 0 && (
+        <div className="bg-cyan-50 dark:bg-slate-800 rounded-2xl p-5 mb-6 shadow-sm border border-cyan-200 dark:border-slate-700">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span>🔄</span>
+            <span>משימות חוזרות</span>
+            <span className="text-sm font-normal text-slate-500">({recurringStats.total_recurring})</span>
+          </h2>
+          <div className="grid grid-cols-3 gap-3">
+            {recurringStats.by_type.map((item) => (
+              <div key={item.recurrence} className="text-center p-3 bg-white dark:bg-slate-700 rounded-xl">
+                <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400">{item.count}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{recurrenceLabels[item.recurrence] || item.recurrence}</p>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400">✓ {item.completed}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tags Usage */}
+      {tagStats.length > 0 && (
+        <div className="bg-pink-50 dark:bg-slate-800 rounded-2xl p-5 mb-6 shadow-sm border border-pink-200 dark:border-slate-700">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span>🏷️</span>
+            <span>שימוש בתגיות</span>
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {tagStats.map((tag) => (
+              <div
+                key={tag.id}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-white text-sm font-bold"
+                style={{ 
+                  background: tag.color2 
+                    ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
+                    : tag.color 
+                }}
+              >
+                <span>{tag.name}</span>
+                <span className="bg-white/30 px-2 py-0.5 rounded-full text-xs">{tag.task_count}</span>
               </div>
             ))}
           </div>
@@ -196,7 +451,7 @@ export default function Dashboard() {
       <div className="mb-6">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
           <span>👥</span>
-          <span>ביצועי עובדים</span>
+          <span>ביצועי צוות</span>
         </h2>
         {staffPerformance.length === 0 ? (
           <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-6 text-center shadow-sm border border-slate-200 dark:border-slate-700">
@@ -211,13 +466,19 @@ export default function Dashboard() {
                 className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700"
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
                     index === 0 ? 'bg-amber-500' : index === 1 ? 'bg-slate-400' : index === 2 ? 'bg-orange-700' : 'bg-slate-500'
                   }`}>
+                    {index < 3 && <span className="absolute -top-1 -right-1 text-sm">{index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}</span>}
                     {staff.user_name.charAt(0)}
                   </div>
                   <div className="flex-1">
-                    <p className="font-bold text-slate-900 dark:text-white">{staff.user_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-slate-900 dark:text-white">{staff.user_name}</p>
+                      <span className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-600 rounded-full text-slate-600 dark:text-slate-300">
+                        {roleLabels[staff.user_role] || staff.user_role}
+                      </span>
+                    </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {staff.completed} מתוך {staff.total_assigned} משימות
                     </p>
@@ -226,7 +487,20 @@ export default function Dashboard() {
                     <p className="text-xl font-bold text-teal-600 dark:text-teal-400">{staff.completion_rate}%</p>
                   </div>
                 </div>
-                <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                
+                {/* Mini stats */}
+                <div className="flex gap-2 mb-3 text-xs">
+                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
+                    🔄 {staff.in_progress || 0} בביצוע
+                  </span>
+                  {(staff.overdue || 0) > 0 && (
+                    <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">
+                      ⚠️ {staff.overdue} באיחור
+                    </span>
+                  )}
+                </div>
+
+                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-500"
                     style={{ width: `${staff.completion_rate}%` }}
