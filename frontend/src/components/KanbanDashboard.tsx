@@ -179,10 +179,18 @@ export default function KanbanDashboard() {
                     .map(col => (
                       <button
                         key={col.name}
-                        onClick={() => handleStatusChange(task.id, col.name)}
-                        onTouchEnd={(e) => { e.preventDefault(); handleStatusChange(task.id, col.name); }}
-                        className="flex-shrink-0 px-4 py-3 bg-slate-700 text-slate-300 rounded-xl text-sm font-bold whitespace-nowrap hover:bg-slate-600 active:bg-slate-500 active:scale-95 transition-all touch-manipulation"
-                        style={{ minHeight: '44px', WebkitTapHighlightColor: 'transparent' }}
+                        onPointerUp={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(task.id, col.name);
+                        }}
+                        className="flex-shrink-0 px-5 py-4 bg-slate-700 text-slate-300 rounded-xl text-base font-bold whitespace-nowrap hover:bg-slate-600 active:bg-slate-500 active:scale-95 transition-all select-none"
+                        style={{ 
+                          minHeight: '52px', 
+                          WebkitTapHighlightColor: 'transparent',
+                          touchAction: 'manipulation',
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none'
+                        }}
                       >
                         {col.displayName}
                       </button>
