@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -37,6 +37,7 @@ export default function App() {
   const [showUserApproval, setShowUserApproval] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const isExitingRef = useRef(false); // Flag to allow exit navigation
   // Initialize theme from localStorage only (not system preference)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -132,6 +133,10 @@ export default function App() {
 
     // Handle back button (popstate event)
     const handlePopState = (e: PopStateEvent) => {
+      // If user is exiting, allow navigation (don't intercept)
+      if (isExitingRef.current) {
+        return;
+      }
       e.preventDefault();
       if (isAnyModalOpen()) {
         closeTopModal();
@@ -451,9 +456,14 @@ export default function App() {
               <button
                 onClick={() => {
                   setShowExitConfirm(false);
+                  // Set flag to allow navigation without interception
+                  isExitingRef.current = true;
+                  // Try to close tab (works if opened by script)
                   window.close();
-                  const steps = Math.max(1, window.history.length - 1);
-                  window.history.go(-steps);
+                  // Navigate back to exit - go back as far as possible
+                  setTimeout(() => {
+                    window.history.go(-(window.history.length));
+                  }, 50);
                 }}
                 className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold text-base hover:bg-red-500 active:scale-95 transition-all"
                 style={{ minHeight: '52px' }}
