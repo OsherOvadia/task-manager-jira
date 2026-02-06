@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useTaskStore, useAuthStore } from '../store';
 import TaskCard from './TaskCard';
 
-export default function DailyTaskList({ onTaskSelect }: { onTaskSelect: (task: any) => void }) {
+export default function DailyTaskList({ onTaskSelect, onEditTask }: { onTaskSelect: (task: any) => void; onEditTask?: (task: any) => void }) {
   const { tasks, fetchTasks } = useTaskStore();
   const { user } = useAuthStore();
 
@@ -75,7 +75,7 @@ export default function DailyTaskList({ onTaskSelect }: { onTaskSelect: (task: a
                 task={task}
                 onClick={() => onTaskSelect(task)}
                 showEditButton={user?.role !== 'worker'}
-                onEdit={() => onTaskSelect(task)}
+                onEdit={() => onEditTask ? onEditTask(task) : onTaskSelect(task)}
               />
             ))}
           </div>

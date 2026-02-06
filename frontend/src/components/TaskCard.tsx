@@ -8,13 +8,6 @@ interface TaskCardProps {
   showEditButton?: boolean;
 }
 
-const priorityLabels: Record<string, string> = {
-  critical: 'דחוף',
-  high: 'גבוה',
-  medium: 'בינוני',
-  low: 'נמוך',
-};
-
 const statusLabels: Record<string, string> = {
   planned: 'מתוכנן',
   assigned: 'הוקצה',
@@ -25,11 +18,12 @@ const statusLabels: Record<string, string> = {
   overdue: 'באיחור',
 };
 
-const priorityColors: Record<string, string> = {
-  critical: 'bg-red-500',
-  high: 'bg-orange-500',
-  medium: 'bg-amber-500',
-  low: 'bg-emerald-500',
+// Priority colors for title highlighting
+const priorityTitleColors: Record<string, string> = {
+  critical: 'text-red-600 dark:text-red-400',
+  high: 'text-orange-600 dark:text-orange-400',
+  medium: 'text-amber-600 dark:text-amber-400',
+  low: 'text-emerald-600 dark:text-emerald-400',
 };
 
 export default function TaskCard({ task, onClick, onEdit, showEditButton = false }: TaskCardProps) {
@@ -56,9 +50,33 @@ export default function TaskCard({ task, onClick, onEdit, showEditButton = false
     }
   };
 
+  // Get assignee display
+  const getAssigneeDisplay = () => {
+    if (task.assignees && task.assignees.length > 0) {
+      return (
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-[10px] text-white font-bold">
+            {task.assignees[0].name.charAt(0)}
+          </span>
+          <span className="text-xs">{task.assignees.length > 1 ? `+${task.assignees.length - 1}` : task.assignees[0].name}</span>
+        </div>
+      );
+    } else if (task.assigned_to_name) {
+      return (
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="w-5 h-5 rounded-full bg-slate-400 flex items-center justify-center text-[10px] text-white font-bold">
+            {task.assigned_to_name.charAt(0)}
+          </span>
+          <span className="text-xs">{task.assigned_to_name}</span>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div
-      className={`p-4 rounded-2xl border transition-all cursor-pointer
+      className={`p-3 rounded-2xl border transition-all cursor-pointer
         bg-white dark:bg-slate-800 
         hover:shadow-md dark:hover:bg-slate-750
         ${isOverdue
@@ -66,117 +84,74 @@ export default function TaskCard({ task, onClick, onEdit, showEditButton = false
           : 'border-slate-200 dark:border-slate-700'
         }`}
     >
-      {/* Header: Title + Priority */}
-      <div className="flex items-start justify-between gap-3 mb-3" onClick={onClick}>
-        <h3 className="font-bold text-slate-900 dark:text-white text-base flex-1 leading-tight">{task.title}</h3>
-        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold text-white whitespace-nowrap ${priorityColors[task.priority] || 'bg-slate-500'}`}>
-          {priorityLabels[task.priority as keyof typeof priorityLabels] || task.priority}
-        </span>
+      {/* Title - highlighted with priority color */}
+      <div className="mb-2" onClick={onClick}>
+        <h3 className={`font-bold text-base leading-tight ${priorityTitleColors[task.priority] || 'text-slate-900 dark:text-white'}`}>
+          {task.title}
+        </h3>
       </div>
 
       {/* Description */}
       {task.description && (
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-3 line-clamp-2" onClick={onClick}>{task.description}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-2 line-clamp-1" onClick={onClick}>{task.description}</p>
       )}
 
-      {/* Status Badge */}
-      <div className="flex flex-wrap gap-2 mb-3" onClick={onClick}>
-        <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-700 text-teal-600 dark:text-teal-400">
+      {/* Single horizontal line: Status, Tags, Date, Assignee */}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mb-2" onClick={onClick}>
+        {/* Status Badge */}
+        <span className="px-2 py-1 rounded-lg font-bold bg-slate-100 dark:bg-slate-700 text-teal-600 dark:text-teal-400 shrink-0">
           {statusLabels[task.status as keyof typeof statusLabels] || task.status}
         </span>
-        {task.recurrence && task.recurrence !== 'once' && (
-          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-            🔄 {task.recurrence === 'daily' ? 'יומי' : task.recurrence === 'weekly' ? 'שבועי' : 'חודשי'}
+
+        {/* Tags */}
+        {task.tags && task.tags.map((tag: any) => (
+          <span
+            key={tag.id}
+            className="px-2 py-1 rounded-lg font-bold text-white shrink-0"
+            style={{ 
+              background: tag.color2 
+                ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
+                : tag.color 
+            }}
+          >
+            {tag.name}
           </span>
-        )}
+        ))}
+
+        {/* Overdue badge */}
         {isOverdue && (
-          <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 dark:bg-orange-500/20 text-red-600 dark:text-orange-400">
+          <span className="px-2 py-1 rounded-lg font-bold bg-red-100 dark:bg-orange-500/20 text-red-600 dark:text-orange-400 shrink-0">
             ⚠️ באיחור
           </span>
         )}
-      </div>
 
-      {/* Task Tags */}
-      {task.tags && task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3" onClick={onClick}>
-          {task.tags.map((tag: any) => (
-            <span
-              key={tag.id}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold text-white shadow-sm"
-              style={{ 
-                background: tag.color2 
-                  ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
-                  : tag.color 
-              }}
-            >
-              {tag.name}
-            </span>
-          ))}
-        </div>
-      )}
+        {/* Recurrence badge */}
+        {task.recurrence && task.recurrence !== 'once' && (
+          <span className="px-2 py-1 rounded-lg font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">
+            🔄 {task.recurrence === 'daily' ? 'יומי' : task.recurrence === 'weekly' ? 'שבועי' : 'חודשי'}
+          </span>
+        )}
 
-      {/* Meta Info: Due date, Time estimate, Assigned */}
-      <div className="flex flex-col gap-2 text-sm text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700 pt-3" onClick={onClick}>
+        {/* Due date */}
         {task.due_date && (
-          <div className="flex items-center gap-2">
-            <span>📅</span>
-            <span className={isOverdue ? 'text-red-500 dark:text-orange-400 font-medium' : ''}>
-              {new Date(task.due_date).toLocaleDateString('he-IL')}
-            </span>
-          </div>
+          <span className={`shrink-0 ${isOverdue ? 'text-red-500 dark:text-orange-400 font-medium' : ''}`}>
+            📅 {new Date(task.due_date).toLocaleDateString('he-IL')}
+          </span>
         )}
-        {task.estimated_time && (
-          <div className="flex items-center gap-2">
-            <span>⏱️</span>
-            <span>
-              {task.estimated_time < 60 
-                ? `${task.estimated_time} דקות` 
-                : task.estimated_time < 1440 
-                ? `${Math.round(task.estimated_time / 60)} שעות` 
-                : `${Math.round(task.estimated_time / 1440)} ימים`}
-            </span>
-          </div>
-        )}
-        {/* Show assignees */}
-        {task.assignees && task.assignees.length > 0 ? (
-          <div className="flex items-center gap-1">
-            <div className="flex -space-x-2 rtl:space-x-reverse">
-              {task.assignees.slice(0, 3).map((assignee: any) => (
-                <span 
-                  key={assignee.id}
-                  className="w-6 h-6 rounded-full bg-teal-600 flex items-center justify-center text-[10px] text-white font-bold border-2 border-white dark:border-slate-700"
-                  title={assignee.name}
-                >
-                  {assignee.name.charAt(0)}
-                </span>
-              ))}
-              {task.assignees.length > 3 && (
-                <span className="w-6 h-6 rounded-full bg-slate-500 flex items-center justify-center text-[10px] text-white font-bold border-2 border-white dark:border-slate-700">
-                  +{task.assignees.length - 3}
-                </span>
-              )}
-            </div>
-            <span className="mr-1 text-xs">{task.assignees.length > 1 ? `${task.assignees.length} מוקצים` : task.assignees[0].name}</span>
-          </div>
-        ) : task.assigned_to_name && (
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-600 flex items-center justify-center text-[10px] text-slate-600 dark:text-white font-bold">
-              {task.assigned_to_name.charAt(0)}
-            </span>
-            <span>{task.assigned_to_name}</span>
-          </div>
-        )}
+
+        {/* Assignee */}
+        {getAssigneeDisplay()}
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+      {/* Action Buttons - reduced height */}
+      <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
         <button
           onClick={onClick}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd(onClick)}
-          className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-teal-600 dark:text-teal-400 rounded-xl text-base font-bold hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-300 dark:active:bg-slate-500 transition-colors active:scale-95 touch-manipulation"
-          style={{ minHeight: '52px', WebkitTapHighlightColor: 'transparent' }}
+          className="flex-1 py-2 bg-slate-100 dark:bg-slate-700 text-teal-600 dark:text-teal-400 rounded-lg text-sm font-bold hover:bg-slate-200 dark:hover:bg-slate-600 active:bg-slate-300 dark:active:bg-slate-500 transition-colors active:scale-95 touch-manipulation"
+          style={{ minHeight: '36px', WebkitTapHighlightColor: 'transparent' }}
         >
           צפייה בפרטים
         </button>
@@ -186,8 +161,8 @@ export default function TaskCard({ task, onClick, onEdit, showEditButton = false
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd(onEdit)}
-            className="flex-1 py-4 bg-teal-600 text-white rounded-xl text-base font-bold hover:bg-teal-500 active:bg-teal-700 transition-colors active:scale-95 touch-manipulation"
-            style={{ minHeight: '52px', WebkitTapHighlightColor: 'transparent' }}
+            className="flex-1 py-2 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-500 active:bg-teal-700 transition-colors active:scale-95 touch-manipulation"
+            style={{ minHeight: '36px', WebkitTapHighlightColor: 'transparent' }}
           >
             עריכה
           </button>

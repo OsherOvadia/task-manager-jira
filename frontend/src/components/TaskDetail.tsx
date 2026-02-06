@@ -27,12 +27,12 @@ const priorityColors: Record<string, string> = {
   critical: 'bg-red-500',
 };
 
-export default function TaskDetail({ taskId, onClose, onTaskUpdate }: any) {
+export default function TaskDetail({ taskId, onClose, onTaskUpdate, initialEditMode = false }: any) {
   const { currentTask, fetchTask, completeTask, verifyTask, updateTask, deleteTask } = useTaskStore();
   const { user, token } = useAuthStore();
   const { tags, fetchTags } = useTagStore();
   const [comment, setComment] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(initialEditMode);
   const [editData, setEditData] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [error, setError] = useState('');
@@ -47,6 +47,21 @@ export default function TaskDetail({ taskId, onClose, onTaskUpdate }: any) {
       fetchTeamMembers();
     }
   }, [taskId]);
+
+  // When opening in edit mode and task loads, set up editData
+  useEffect(() => {
+    if (initialEditMode && currentTask && !editData) {
+      setEditData({
+        title: currentTask.title,
+        description: currentTask.description,
+        status: currentTask.status,
+        priority: currentTask.priority,
+        assignees: currentTask.assignees ? currentTask.assignees.map((a: any) => a.id) : (currentTask.assigned_to ? [currentTask.assigned_to] : []),
+        due_date: currentTask.due_date,
+        tags: currentTask.tags ? currentTask.tags.map((t: any) => t.id) : [],
+      });
+    }
+  }, [initialEditMode, currentTask]);
 
   useEffect(() => {
     if (user?.restaurant_id) {

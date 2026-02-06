@@ -29,6 +29,7 @@ export default function App() {
   const { isSupported, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   const [currentView, setCurrentView] = useState<ViewType>('daily');
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [openInEditMode, setOpenInEditMode] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showStatusManager, setShowStatusManager] = useState(false);
   const [showTagManager, setShowTagManager] = useState(false);
@@ -305,7 +306,10 @@ export default function App() {
             transition={{ duration: 0.15 }}
           >
             {currentView === 'daily' && (
-              <DailyTaskList onTaskSelect={setSelectedTask} />
+              <DailyTaskList 
+                onTaskSelect={(task) => { setOpenInEditMode(false); setSelectedTask(task); }}
+                onEditTask={(task) => { setOpenInEditMode(true); setSelectedTask(task); }}
+              />
             )}
             {currentView === 'kanban' && (
               <KanbanBoard onTaskSelect={setSelectedTask} />
@@ -389,8 +393,9 @@ export default function App() {
       {selectedTask && (
         <TaskDetail
           taskId={selectedTask.id}
-          onClose={() => setSelectedTask(null)}
+          onClose={() => { setSelectedTask(null); setOpenInEditMode(false); }}
           onTaskUpdate={() => {}}
+          initialEditMode={openInEditMode}
         />
       )}
 
