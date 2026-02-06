@@ -90,11 +90,20 @@ export default function KanbanDashboard() {
     );
   }
 
-  // Get all tasks flattened for filtering
+  // Priority order for sorting
+  const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+  const sortByPriority = (a: TaskWithAssignee, b: TaskWithAssignee) => {
+    const aPriority = priorityOrder[a.priority] ?? 4;
+    const bPriority = priorityOrder[b.priority] ?? 4;
+    return aPriority - bPriority;
+  };
+
+  // Get all tasks flattened for filtering, sorted by priority
   const allTasks = columns.flatMap(col => col.tasks);
-  const filteredTasks = activeFilter === 'all' 
+  const filteredTasks = (activeFilter === 'all' 
     ? allTasks 
-    : allTasks.filter(task => task.status === activeFilter);
+    : allTasks.filter(task => task.status === activeFilter)
+  ).sort(sortByPriority);
 
   // Stats
   const totalTasks = allTasks.length;

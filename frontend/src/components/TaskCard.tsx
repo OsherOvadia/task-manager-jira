@@ -139,6 +139,17 @@ export default function TaskCard({ task, onClick, onEdit, showEditButton = false
           </span>
         )}
 
+        {/* Estimated time */}
+        {task.estimated_time && (
+          <span className="shrink-0">
+            ⏱️ {task.estimated_time < 60 
+              ? `${task.estimated_time} דק'` 
+              : task.estimated_time < 1440 
+              ? `${Math.round(task.estimated_time / 60)} שע'` 
+              : `${Math.round(task.estimated_time / 1440)} ימים`}
+          </span>
+        )}
+
         {/* Assignee */}
         {getAssigneeDisplay()}
       </div>
