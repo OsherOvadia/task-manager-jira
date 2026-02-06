@@ -144,6 +144,7 @@ export const sendNotificationToAll = async (title: string, body: string, icon?: 
 
 // Scheduled notification sender
 let morningNotificationSent = false;
+let noonNotificationSent = false;
 let eveningNotificationSent = false;
 let lastCheckedDate = '';
 
@@ -166,6 +167,7 @@ export const checkAndSendScheduledNotifications = async () => {
   if (lastCheckedDate !== dateStr) {
     console.log(`📅 New day in Israel: ${dateStr}`);
     morningNotificationSent = false;
+    noonNotificationSent = false;
     eveningNotificationSent = false;
     lastCheckedDate = dateStr;
   }
@@ -179,6 +181,17 @@ export const checkAndSendScheduledNotifications = async () => {
     );
     console.log(`📲 Morning notification result:`, result);
     morningNotificationSent = true;
+  }
+
+  // Noon notification at 12:30 Israel time
+  if (hours === 12 && minutes >= 30 && minutes < 35 && !noonNotificationSent) {
+    console.log(`📲 Sending noon notification... (Israel time: ${hours}:${minutes})`);
+    const result = await sendNotificationToAll(
+      '🍽️ שתיהיה משמרת מוצלחת!',
+      'הסתכלת על המשימות שלך?'
+    );
+    console.log(`📲 Noon notification result:`, result);
+    noonNotificationSent = true;
   }
 
   // Evening notification at 22:00 Israel time
@@ -198,6 +211,7 @@ export const startPushScheduler = () => {
   const { hours, minutes } = getIsraelTime();
   console.log(`📲 Push notification scheduler started (Israel time: ${hours}:${String(minutes).padStart(2, '0')})`);
   console.log(`📲 Morning notification scheduled for 9:00 Israel time`);
+  console.log(`📲 Noon notification scheduled for 12:30 Israel time`);
   console.log(`📲 Evening notification scheduled for 22:00 Israel time`);
   
   // Check immediately

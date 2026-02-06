@@ -6,6 +6,7 @@ import {
   removeSubscription,
   sendNotificationToAll 
 } from '../services/pushService';
+import db from '../database';
 
 const router = express.Router();
 
@@ -63,6 +64,51 @@ router.post('/test', authenticateToken, async (req: AuthRequest, res: Response) 
     res.json({ message: 'Test notification sent', ...result });
   } catch (error) {
     res.status(500).json({ error: 'Failed to send test notification' });
+  }
+});
+
+// Get all users with notification status (admin only)
+router.get('/users-status', authenticateToken, (req: AuthRequest, res: Response) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+
+  try {
+    const restaurantId = req.user?.restaurantId;
+    
+    // Get all users from this restaurant with their notification subscription count
+    const users = db.prepare(`
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        u.role,
+        u.status,
+        (SELECT COUNT(*) FROM push_subscriptions ps WHERE ps.user_id = u.id) as subscription_count
+      FROM users u
+      WHERE u.restaurant_id = ?
+      ORDER BY u.name
+    `).all(restaurantId) as any[];
+
+    const result = users.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      notificationsEnabled: user.subscription_count > 0,
+      subscriptionCount: user.subscription_count
+    }));
+
+    res.json({
+      total: result.length,
+      withNotifications: result.filter(u => u.notificationsEnabled).length,
+      withoutNotifications: result.filter(u => !u.notificationsEnabled).length,
+      users: result
+    });
+  } catch (error) {
+    console.error('Error fetching users status:', error);
+    res.status(500).json({ error: 'Failed to fetch users status' });
   }
 });
 
