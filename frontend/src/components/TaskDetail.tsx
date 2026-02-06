@@ -58,6 +58,7 @@ export default function TaskDetail({ taskId, onClose, onTaskUpdate, initialEditM
         priority: currentTask.priority,
         assignees: currentTask.assignees ? currentTask.assignees.map((a: any) => a.id) : (currentTask.assigned_to ? [currentTask.assigned_to] : []),
         due_date: currentTask.due_date,
+        estimated_time: currentTask.estimated_time || '',
         tags: currentTask.tags ? currentTask.tags.map((t: any) => t.id) : [],
       });
     }
@@ -113,6 +114,7 @@ export default function TaskDetail({ taskId, onClose, onTaskUpdate, initialEditM
       priority: currentTask.priority,
       assignees: currentTask.assignees ? currentTask.assignees.map((a: any) => a.id) : (currentTask.assigned_to ? [currentTask.assigned_to] : []),
       due_date: currentTask.due_date,
+      estimated_time: currentTask.estimated_time || '',
       tags: currentTask.tags ? currentTask.tags.map((t: any) => t.id) : [],
     });
     // Scroll to top when entering edit mode
@@ -419,6 +421,20 @@ export default function TaskDetail({ taskId, onClose, onTaskUpdate, initialEditM
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-teal-500 focus:outline-none"
                     dir="ltr"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-teal-400 mb-2">זמן מוערך (בדקות)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="לדוגמה: 30 דקות, 60 = שעה"
+                    value={editData.estimated_time || ''}
+                    onChange={(e) => setEditData({ ...editData, estimated_time: e.target.value ? parseInt(e.target.value) : '' })}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:border-teal-500 focus:outline-none"
+                    dir="ltr"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">60 = שעה, 120 = שעתיים, 1440 = יום</p>
                 </div>
 
                 {/* Tags */}
