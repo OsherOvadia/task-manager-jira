@@ -18,12 +18,12 @@ const statusLabels: Record<string, string> = {
   overdue: 'באיחור',
 };
 
-// Priority colors for title highlighting
+// Priority colors for title highlighting - more vivid colors
 const priorityTitleColors: Record<string, string> = {
-  critical: 'text-red-600 dark:text-red-400',
-  high: 'text-orange-600 dark:text-orange-400',
-  medium: 'text-amber-600 dark:text-amber-400',
-  low: 'text-emerald-600 dark:text-emerald-400',
+  critical: 'text-red-500 dark:text-red-400 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]',
+  high: 'text-orange-500 dark:text-orange-400 drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]',
+  medium: 'text-yellow-500 dark:text-yellow-400 drop-shadow-[0_0_6px_rgba(234,179,8,0.4)]',
+  low: 'text-emerald-500 dark:text-emerald-400',
 };
 
 export default function TaskCard({ task, onClick, onEdit, showEditButton = false }: TaskCardProps) {

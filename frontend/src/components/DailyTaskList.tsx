@@ -19,7 +19,7 @@ export default function DailyTaskList({ onTaskSelect, onEditTask }: { onTaskSele
   const pendingTasks = filteredTasks.filter((t) => !['completed', 'verified'].includes(t.status));
   const completedTasks = filteredTasks.filter((t) => ['completed', 'verified'].includes(t.status));
 
-  // Sort by: 1) Overdue first, 2) Priority (critical > high > medium > low), 3) Due date (closest first)
+  // Sort by: 1) Overdue first, 2) Due date (closest first), 3) Priority (critical > high > medium > low)
   const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
   const sortTasks = (a: any, b: any) => {
     const now = new Date();
@@ -30,19 +30,18 @@ export default function DailyTaskList({ onTaskSelect, onEditTask }: { onTaskSele
     if (aOverdue && !bOverdue) return -1;
     if (!aOverdue && bOverdue) return 1;
     
+    // Then by due date (closest first)
+    if (a.due_date && b.due_date) {
+      const dateDiff = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+    }
+    if (a.due_date && !b.due_date) return -1;
+    if (!a.due_date && b.due_date) return 1;
+    
     // Then by priority (critical = 0 = highest)
     const aPriority = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 4;
     const bPriority = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 4;
-    if (aPriority !== bPriority) return aPriority - bPriority;
-    
-    // Then by due date (closest first)
-    if (a.due_date && b.due_date) {
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
-    }
-    if (a.due_date) return -1;
-    if (b.due_date) return 1;
-    
-    return 0;
+    return aPriority - bPriority;
   };
 
   return (
