@@ -10,7 +10,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, (req: AuthRequest, re
     const { restaurantId } = req.params;
     const tags = db
       .prepare(
-        `SELECT id, name, color, color2, created_by FROM tags 
+        `SELECT id, name, color, created_by FROM tags 
          WHERE restaurant_id = ? 
          ORDER BY name ASC`
       )
@@ -27,7 +27,7 @@ router.get('/task/:taskId', authenticateToken, (req: AuthRequest, res: Response)
     const { taskId } = req.params;
     const tags = db
       .prepare(
-        `SELECT t.id, t.name, t.color, t.color2 FROM tags t
+        `SELECT t.id, t.name, t.color FROM tags t
          JOIN task_tags tt ON t.id = tt.tag_id
          WHERE tt.task_id = ?
          ORDER BY t.name ASC`
@@ -42,7 +42,7 @@ router.get('/task/:taskId', authenticateToken, (req: AuthRequest, res: Response)
 // Create a new tag (maintainers and admins only)
 router.post('/', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
-    const { restaurantId, name, color, color2 } = req.body;
+    const { restaurantId, name, color } = req.body;
 
     // Check if user is maintainer or admin
     const user = db
@@ -51,7 +51,7 @@ router.post('/', authenticateToken, (req: AuthRequest, res: Response) => {
     if (user?.role !== 'admin' && user?.role !== 'maintainer') {
       return res
         .status(403)
-        .json({ error: 'רק מנהלים יכולים ליצור תגיות' });
+        .json({ error: 'Only maintainers and admins can create tags' });
     }
 
     // Check if tag name already exists for this restaurant
@@ -59,21 +59,20 @@ router.post('/', authenticateToken, (req: AuthRequest, res: Response) => {
       .prepare('SELECT id FROM tags WHERE restaurant_id = ? AND name = ?')
       .get(restaurantId, name);
     if (existing) {
-      return res.status(400).json({ error: 'תגית בשם זה כבר קיימת' });
+      return res.status(400).json({ error: 'Tag already exists' });
     }
 
     const result = db
       .prepare(
-        `INSERT INTO tags (restaurant_id, name, color, color2, created_by)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO tags (restaurant_id, name, color, created_by)
+         VALUES (?, ?, ?, ?)`
       )
-      .run(restaurantId, name, color || '#808080', color2 || null, req.user?.id);
+      .run(restaurantId, name, color || '#808080', req.user?.id);
 
     res.json({
       id: result.lastInsertRowid,
       name,
       color: color || '#808080',
-      color2: color2 || null,
       created_by: req.user?.id,
     });
   } catch (error: any) {
@@ -85,7 +84,7 @@ router.post('/', authenticateToken, (req: AuthRequest, res: Response) => {
 router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, color, color2 } = req.body;
+    const { name, color } = req.body;
 
     // Check if user is maintainer or admin
     const user = db
@@ -94,13 +93,12 @@ router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
     if (user?.role !== 'admin' && user?.role !== 'maintainer') {
       return res
         .status(403)
-        .json({ error: 'רק מנהלים יכולים לעדכן תגיות' });
+        .json({ error: 'Only maintainers and admins can update tags' });
     }
 
-    db.prepare(`UPDATE tags SET name = ?, color = ?, color2 = ? WHERE id = ?`).run(
+    db.prepare(`UPDATE tags SET name = ?, color = ? WHERE id = ?`).run(
       name,
       color,
-      color2 || null,
       id
     );
 

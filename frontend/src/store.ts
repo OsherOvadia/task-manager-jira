@@ -16,21 +16,8 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  role: 'admin' | 'maintainer' | 'worker';
+  role: 'admin' | 'manager' | 'maintainer' | 'worker' | 'staff';
   restaurant_id: number;
-}
-
-export interface Tag {
-  id: number;
-  name: string;
-  color: string;
-  color2?: string;
-}
-
-export interface Assignee {
-  id: number;
-  name: string;
-  email: string;
 }
 
 export interface Task {
@@ -39,16 +26,14 @@ export interface Task {
   description?: string;
   assigned_to?: number;
   assigned_to_name?: string;
-  assignees?: Assignee[];
   priority: 'low' | 'medium' | 'high' | 'critical';
-  status: string;
+  status: 'planned' | 'assigned' | 'in_progress' | 'waiting' | 'completed' | 'verified' | 'overdue';
   due_date?: string;
   estimated_time?: number;
   recurrence: 'once' | 'daily' | 'weekly' | 'monthly';
   created_at: string;
   completed_at?: string;
   verified_at?: string;
-  tags?: Tag[];
 }
 
 export interface Comment {
@@ -70,7 +55,6 @@ export interface Tag {
   id: number;
   name: string;
   color: string;
-  color2?: string;
   created_by?: number;
 }
 
@@ -83,20 +67,14 @@ interface AuthStore {
   setUser: (user: User | null, token: string | null) => void;
 }
 
-// Input type for creating/updating tasks (tags and assignees are IDs, not full objects)
-type TaskInput = Omit<Partial<Task>, 'tags' | 'assignees'> & { 
-  tags?: number[];
-  assignees?: number[];
-};
-
 interface TaskStore {
   tasks: Task[];
-  currentTask: (Task & { checklists: any[]; comments: Comment[]; photos: Photo[]; tags?: Tag[]; assignees?: Assignee[] }) | null;
+  currentTask: (Task & { checklists: any[]; comments: Comment[]; photos: Photo[] }) | null;
   loading: boolean;
   fetchTasks: (filters?: { status?: string; assigned_to?: number }) => Promise<void>;
   fetchTask: (id: number) => Promise<void>;
-  createTask: (task: TaskInput) => Promise<void>;
-  updateTask: (id: number, task: TaskInput) => Promise<void>;
+  createTask: (task: Partial<Task>) => Promise<void>;
+  updateTask: (id: number, task: Partial<Task>) => Promise<void>;
   completeTask: (id: number) => Promise<void>;
   verifyTask: (id: number, comment?: string) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
@@ -150,8 +128,6 @@ export const useAuthStore = create<AuthStore>((set) => {
       localStorage.removeItem('user');
       localStorage.removeItem('token');
       localStorage.removeItem('rememberMe');
-      // Clear axios default header
-      delete axios.defaults.headers.common['Authorization'];
       set({ user: null, token: null, rememberMe: false });
     },
 

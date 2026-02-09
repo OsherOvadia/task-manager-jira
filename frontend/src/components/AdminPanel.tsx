@@ -1,31 +1,16 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuthStore } from '../store';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const roleLabels: Record<string, string> = {
-  worker: 'עובד',
-  maintainer: 'מנהל',
-  admin: 'מנהל ראשי',
-};
-
 export default function AdminPanel({ onClose }: { onClose: () => void }) {
-  const { token } = useAuthStore();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'worker' as 'worker' | 'maintainer' | 'admin',
-  });
+  const { user, token } = useAuthStore();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'staff' | 'manager' | 'admin'>('staff');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,123 +20,134 @@ export default function AdminPanel({ onClose }: { onClose: () => void }) {
 
     try {
       await axios.post(
-        `${API_BASE}/auth/register`,
+        `${import.meta.env.VITE_API_URL}/auth/register`,
         {
-          ...formData,
-          requestedRole: formData.role,
+          name,
+          email,
+          password,
+          role,
+          restaurantId: user?.restaurant_id,
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      setSuccess('משתמש נוצר בהצלחה');
-      setFormData({ name: '', email: '', password: '', role: 'worker' });
-      setTimeout(() => setSuccess(''), 3000);
+      setSuccess(`✅ משתמש ${name} נוצר בהצלחה!`);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setRole('staff');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'שגיאה ביצירת משתמש');
+      setError(err.response?.data?.error || 'שגיאה בעת יצירת המשתמש');
     } finally {
       setLoading(false);
     }
   };
 
+  if (user?.role !== 'admin') {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+          <p className="text-red-600 font-bold text-center">❌ אתה חייב להיות מנהל מערכת כדי לגשת לפאנל זה</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-50">
-      <div className="bg-slate-800 w-full max-h-[90vh] rounded-t-2xl overflow-hidden animate-slideUp">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">הוספת משתמש חדש</h2>
-          <button onClick={onClose} className="text-slate-400 text-2xl">✕</button>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            👤 יצירת משתמש חדש
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-600 hover:text-gray-900 text-2xl font-bold transition"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-teal-400 mb-2">שם מלא</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">שם</label>
             <input
               type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="ישראל ישראלי"
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="הכנס שם"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-teal-400 mb-2">אימייל</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">דוא"ל</label>
             <input
               type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="email@example.com"
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="הכנס דוא״ל"
               required
-              dir="ltr"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-teal-400 mb-2">סיסמה</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">סיסמה</label>
             <input
               type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="לפחות 6 תווים"
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-white placeholder-slate-500"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="הכנס סיסמה"
               required
-              minLength={6}
-              dir="ltr"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-teal-400 mb-2">תפקיד</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['worker', 'maintainer', 'admin'] as const).map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, role }))}
-                  className={`py-3 rounded-xl text-sm font-bold transition-all ${
-                    formData.role === role
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-slate-700 text-slate-400'
-                  }`}
-                >
-                  {roleLabels[role]}
-                </button>
-              ))}
-            </div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">תפקיד</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as 'staff' | 'manager' | 'admin')}
+              className="w-full px-4 py-3 border-2 border-blue-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="staff">👤 עובד</option>
+              <option value="manager">👨‍💼 מנהל</option>
+              <option value="admin">👑 מנהל מערכת</option>
+            </select>
           </div>
 
           {error && (
-            <div className="p-3 bg-orange-500/20 border border-orange-500 rounded-xl text-orange-400 text-sm">
-              {error}
+            <div className="bg-red-100 border-2 border-red-300 text-red-700 p-4 rounded-xl text-sm font-semibold">
+              ⚠️ {error}
             </div>
           )}
 
           {success && (
-            <div className="p-3 bg-teal-500/20 border border-teal-500 rounded-xl text-teal-400 text-sm">
+            <div className="bg-green-100 border-2 border-green-300 text-green-700 p-4 rounded-xl text-sm font-semibold">
               {success}
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-3 bg-slate-700 text-slate-300 rounded-xl font-bold"
-            >
-              ביטול
-            </button>
+          <div className="flex gap-4">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold disabled:opacity-50"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold hover:shadow-lg disabled:opacity-50 transition-all duration-300 transform hover:scale-105 active:scale-95"
             >
-              {loading ? 'יוצר...' : 'יצירה'}
+              {loading ? '⏳ יוצר...' : '✨ יצור משתמש'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-300 transition-all duration-300"
+            >
+              ❌ סגור
             </button>
           </div>
         </form>

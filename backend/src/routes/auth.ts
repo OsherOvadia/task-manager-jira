@@ -2,12 +2,7 @@ import express, { Request, Response } from 'express';
 import db from '../database';
 import bcrypt from 'bcryptjs';
 import { generateToken, verifyToken } from '../middleware';
-import { 
-  sendUserApprovalEmail, 
-  sendUserDenialEmail,
-  sendNewUserRegistrationNotification,
-  sendRegistrationPendingEmail 
-} from '../services/emailService';
+import { sendUserApprovalEmail, sendUserDenialEmail } from '../services/emailService';
 
 const router = express.Router();
 
@@ -40,50 +35,18 @@ router.post('/login', (req: Request, res: Response) => {
 });
 
 // Register endpoint - PUBLIC SIGNUP with worker role by default
-// If called by admin with token, can set custom role and auto-approve
 router.post('/register', (req: Request, res: Response) => {
   try {
-    const { email, name, password, restaurantId, role: requestedRole } = req.body;
+    const { email, name, password, restaurantId } = req.body;
 
     if (!email || !name || !password) {
       return res.status(400).json({ error: 'Missing required fields: email, name, password' });
     }
 
-    // Check if email already exists
-    const existingUser = db.prepare('SELECT id, status FROM users WHERE email = ?').get(email) as any;
-    if (existingUser) {
-      if (existingUser.status === 'pending') {
-        return res.status(409).json({ error: 'בקשת הרשמה עם אימייל זה כבר קיימת וממתינה לאישור' });
-      }
-      return res.status(409).json({ error: 'משתמש עם אימייל זה כבר קיים במערכת' });
-    }
-
     const hashedPassword = bcrypt.hashSync(password, 10);
 
-    // Check if admin is creating the user (has valid token)
-    let isAdminCreating = false;
-    let adminUser: any = null;
-    const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-      try {
-        adminUser = verifyToken(token);
-        if (['admin', 'maintainer'].includes(adminUser.role)) {
-          isAdminCreating = true;
-        }
-      } catch (e) {
-        // Token invalid, treat as public signup
-      }
-    }
-
-    // If admin is creating user, use requested role; otherwise default to 'worker'
-    const validRoles = ['admin', 'maintainer', 'worker'];
-    let role = 'worker';
-    if (isAdminCreating && requestedRole && validRoles.includes(requestedRole)) {
-      role = requestedRole;
-    }
-
-    // If admin is creating, auto-approve; otherwise pending
-    const status = isAdminCreating ? 'approved' : 'pending';
+    // Default role is 'worker' for public signup
+    const role = 'worker';
 
     let finalRestaurantId = restaurantId || 1; // Default to first restaurant
 
@@ -107,14 +70,14 @@ router.post('/register', (req: Request, res: Response) => {
       }
     }
 
-    // Insert user
+    // Insert user with pending status (requires admin approval)
     try {
       const stmt = db.prepare(`
         INSERT INTO users (email, name, password, role, status, restaurant_id)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
-      const result = stmt.run(email, name, hashedPassword, role, status, finalRestaurantId);
+      const result = stmt.run(email, name, hashedPassword, role, 'pending', finalRestaurantId);
       const userId = Number(result.lastInsertRowid);
 
       if (!userId) {
@@ -127,29 +90,9 @@ router.post('/register', (req: Request, res: Response) => {
         return res.status(500).json({ error: 'Failed to retrieve created user' });
       }
 
-      const message = isAdminCreating 
-        ? `User ${name} created successfully with role: ${role}`
-        : `User ${name} registered successfully. Your account is pending admin approval.`;
-
-      // If public signup, send email notifications
-      if (!isAdminCreating) {
-        // Send email to the new user
-        sendRegistrationPendingEmail(email, name).catch(console.error);
-
-        // Send email to all admins/maintainers about the new registration
-        const admins = db.prepare(`
-          SELECT email FROM users 
-          WHERE restaurant_id = ? AND role IN ('admin', 'maintainer') AND status = 'approved'
-        `).all(finalRestaurantId) as any[];
-
-        for (const admin of admins) {
-          sendNewUserRegistrationNotification(admin.email, name, email).catch(console.error);
-        }
-      }
-
       res.status(201).json({ 
         user: { ...user, password: undefined },
-        message
+        message: `User ${name} registered successfully. Your account is pending admin approval.`
       });
     } catch (dbError: any) {
       console.error('Database error creating user:', dbError);
@@ -343,54 +286,4 @@ router.put('/deny-user/:userId', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Denial failed: ' + (error.message || 'Unknown error') });
   }
 });
-
-// Delete user - ADMIN only
-router.delete('/user/:userId', (req: Request, res: Response) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    const { userId } = req.params;
-
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized - token required' });
-    }
-
-    let currentUser: any;
-    try {
-      currentUser = verifyToken(token);
-    } catch (e) {
-      return res.status(401).json({ error: 'Unauthorized - invalid token' });
-    }
-
-    // Only admins can delete users
-    if (currentUser.role !== 'admin') {
-      return res.status(403).json({ error: 'Only admins can delete users' });
-    }
-
-    // Cannot delete yourself
-    if (parseInt(userId) === currentUser.id) {
-      return res.status(400).json({ error: 'לא ניתן למחוק את עצמך' });
-    }
-
-    // Get user to delete
-    const userToDelete = db.prepare('SELECT * FROM users WHERE id = ? AND restaurant_id = ?').get(userId, currentUser.restaurantId) as any;
-
-    if (!userToDelete) {
-      return res.status(404).json({ error: 'User not found or belongs to different restaurant' });
-    }
-
-    // Remove user from task assignments first
-    db.prepare('DELETE FROM task_assignments WHERE user_id = ?').run(userId);
-
-    // Delete the user
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
-
-    res.json({ 
-      message: `משתמש ${userToDelete.name} נמחק בהצלחה`
-    });
-  } catch (error: any) {
-    console.error('Delete user error:', error);
-    res.status(500).json({ error: 'Delete failed: ' + (error.message || 'Unknown error') });
-  }
-});
-
 export default router;

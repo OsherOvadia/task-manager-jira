@@ -2,20 +2,14 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const roleLabels: Record<string, string> = {
-  worker: 'עובד',
-  maintainer: 'מנהל',
-  admin: 'מנהל ראשי',
-};
-
 export default function UserManagementModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const API_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     if (isOpen) {
@@ -27,152 +21,119 @@ export default function UserManagementModal({ isOpen, onClose }: { isOpen: boole
     try {
       setLoading(true);
       setError('');
-      const response = await axios.get(`${API_BASE}/tasks/team/members`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/tasks/team/members`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(response.data);
     } catch (err: any) {
-      setError('שגיאה בטעינת משתמשים');
+      setError(err.response?.data?.error || 'Failed to fetch users');
     } finally {
       setLoading(false);
     }
   };
 
   const handlePromoteToAdmin = async (userId: number, userName: string) => {
-    if (!window.confirm(`לקדם את ${userName} למנהל ראשי?`)) return;
+    if (!window.confirm(`Promote ${userName} to Admin?`)) {
+      return;
+    }
 
     try {
       setError('');
-      setSuccess('');
+      setSuccessMessage('');
+      const token = localStorage.getItem('token');
       
       await axios.post(
-        `${API_BASE}/auth/promote`,
+        `${API_URL}/auth/promote`,
         { userId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccess(`${userName} קודם בהצלחה`);
+      setSuccessMessage(`${userName} promoted to Admin successfully!`);
       setTimeout(() => {
-        setSuccess('');
+        setSuccessMessage('');
         fetchUsers();
       }, 2000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'שגיאה בקידום משתמש');
-    }
-  };
-
-  const handleDeleteUser = async (userId: number, userName: string) => {
-    if (!window.confirm(`האם אתה בטוח שברצונך למחוק את ${userName}? פעולה זו לא ניתנת לביטול.`)) return;
-
-    try {
-      setError('');
-      setSuccess('');
-      
-      await axios.delete(
-        `${API_BASE}/auth/user/${userId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      setSuccess(`${userName} נמחק בהצלחה`);
-      setTimeout(() => {
-        setSuccess('');
-        fetchUsers();
-      }, 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'שגיאה במחיקת משתמש');
+      setError(err.response?.data?.error || 'Failed to promote user');
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-50">
-      <div className="bg-slate-800 w-full max-h-[90vh] rounded-t-2xl overflow-hidden animate-slideUp">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">ניהול צוות</h2>
-          <button onClick={onClose} className="text-slate-400 text-2xl">✕</button>
-        </div>
-
-        {/* Content */}
-        <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(90vh-120px)]">
-          {error && (
-            <div className="p-3 bg-orange-500/20 border border-orange-500 rounded-xl text-orange-400 text-sm">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="p-3 bg-teal-500/20 border border-teal-500 rounded-xl text-teal-400 text-sm">
-              {success}
-            </div>
-          )}
-
-          {loading ? (
-            <div className="text-center py-8">
-              <p className="text-teal-400">טוען...</p>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-slate-400 text-lg mb-2">אין חברי צוות</p>
-              <p className="text-slate-500 text-sm">הוסף משתמשים חדשים</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {users.map((u) => (
-                <div
-                  key={u.id}
-                  className="bg-slate-700 rounded-xl p-4"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="font-bold text-white">{u.name}</p>
-                      <p className="text-sm text-slate-400" dir="ltr">{u.email}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                      u.role === 'admin' 
-                        ? 'bg-teal-600 text-white' 
-                        : u.role === 'maintainer'
-                        ? 'bg-slate-600 text-teal-400'
-                        : 'bg-slate-600 text-slate-300'
-                    }`}>
-                      {roleLabels[u.role] || u.role}
-                    </span>
-                  </div>
-
-                  {u.id !== user?.id && user?.role === 'admin' && (
-                    <div className="flex gap-2">
-                      {u.role !== 'admin' && (
-                        <button
-                          onClick={() => handlePromoteToAdmin(u.id, u.name)}
-                          className="flex-1 py-2 bg-teal-600 text-white rounded-lg font-bold text-sm"
-                        >
-                          קדם למנהל ראשי
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.name)}
-                        className="py-2 px-4 bg-red-600 text-white rounded-lg font-bold text-sm"
-                      >
-                        🗑️ מחק
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-slate-700">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-teal-500/30 shadow-2xl">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">👥 User Management</h2>
           <button
             onClick={onClose}
-            className="w-full py-3 bg-slate-700 text-slate-300 rounded-xl font-bold"
+            className="text-3xl text-slate-400 hover:text-white transition-colors"
           >
-            סגירה
+            ✕
           </button>
         </div>
+
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="bg-teal-500/20 border border-teal-500/50 text-teal-200 px-4 py-3 rounded-lg mb-4">
+            ✓ {successMessage}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-8">
+            <p className="text-slate-300 text-lg">Loading users...</p>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-slate-400">No team members found</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {users.map((u) => (
+              <div
+                key={u.id}
+                className="bg-slate-700/50 border border-slate-600 rounded-lg p-4 flex items-center justify-between hover:bg-slate-700 transition-colors"
+              >
+                <div>
+                  <p className="font-bold text-white">{u.name}</p>
+                  <p className="text-sm text-slate-400">{u.email}</p>
+                  <p className="text-xs text-teal-300 mt-1">
+                    Role: <span className="font-semibold">{u.role.toUpperCase()}</span>
+                  </p>
+                </div>
+
+                {u.id !== user?.id && u.role !== 'admin' && (
+                  <button
+                    onClick={() => handlePromoteToAdmin(u.id, u.name)}
+                    className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 whitespace-nowrap ml-4"
+                  >
+                    📈 Promote
+                  </button>
+                )}
+
+                {u.role === 'admin' && (
+                  <span className="px-4 py-2 bg-emerald-600/30 text-emerald-300 font-bold rounded-lg border border-emerald-500/50">
+                    👑 Admin
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="w-full mt-6 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-all duration-300"
+        >
+          Close
+        </button>
       </div>
     </div>
   );

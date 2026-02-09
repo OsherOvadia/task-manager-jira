@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import type { DropResult, DroppableProvided, DroppableStateSnapshot, DraggableProvided, DraggableStateSnapshot } from 'react-beautiful-dnd';
 import { useTaskStore, useAuthStore } from '../store';
+import TaskCard from './TaskCard';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const statusLabels: Record<string, string> = {
+  planned: 'מתוכנן',
+  assigned: 'הוקצה',
+  in_progress: 'בתהליך',
+  waiting: 'בהמתנה',
+  completed: 'הושלם',
+  verified: 'אומת',
+};
 
 interface Status {
   id: number;
@@ -14,331 +21,200 @@ interface Status {
   order_index: number;
 }
 
-const priorityColors: Record<string, string> = {
-  low: '#10b981',
-  medium: '#f59e0b',
-  high: '#f97316',
-  critical: '#ef4444',
-};
-
-const priorityLabels: Record<string, string> = {
-  low: 'נמוכה',
-  medium: 'בינונית',
-  high: 'גבוהה',
-  critical: 'קריטית',
-};
-
-export default function KanbanBoard({ onTaskSelect }: { onTaskSelect: (task: any) => void }) {
-  const { tasks, fetchTasks, updateTask, deleteTask } = useTaskStore();
+export default function KanbanBoard({ onTaskSelect }: any) {
+  const { tasks, fetchTasks, updateTask } = useTaskStore();
   const { user, token } = useAuthStore();
   const [tasksByStatus, setTasksByStatus] = useState<Record<string, any[]>>({});
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [loading, setLoading] = useState(false);
-  const [taskToDelete, setTaskToDelete] = useState<any>(null);
 
-  const isManager = user?.role === 'admin' || user?.role === 'maintainer';
+  // DEBUG: Log user and token for troubleshooting
+  console.log('KANBAN DEBUG user:', user);
+  console.log('KANBAN DEBUG token:', token);
 
-  const handleDeleteTask = async () => {
-    if (!taskToDelete) return;
-    try {
-      await deleteTask(taskToDelete.id);
-      setTaskToDelete(null);
-      fetchTasks();
-    } catch (error) {
-      console.error('שגיאה במחיקת משימה:', error);
-    }
-  };
-
-  // Fetch statuses on mount
   useEffect(() => {
     if (!user || !token) return;
     const fetchStatuses = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${API_BASE}/statuses/restaurant/${user.restaurant_id}`, {
+        const res = await axios.get(`/api/statuses/restaurant/${user.restaurant_id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setStatuses(res.data);
       } catch (error) {
-        console.error('שגיאה בטעינת סטטוסים:', error);
+        console.error('Failed to fetch statuses:', error);
       } finally {
         setLoading(false);
       }
     };
     fetchStatuses();
-    fetchTasks();
   }, [user, token]);
 
-  // Priority order for sorting
-  const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-
-  // Organize tasks by status and sort by priority
-  useEffect(() => {
-    if (tasks && statuses.length > 0) {
-      const grouped: Record<string, any[]> = {};
-      statuses.forEach((status) => {
-        grouped[status.name] = tasks
-          .filter((task) => task.status === status.name)
-          .sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4));
-      });
-      setTasksByStatus(grouped);
+  return (
+    <div className="w-full flex flex-col gap-4">
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div
+          className="flex gap-4 overflow-x-auto pb-2"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {statuses.map((status, idx) => (
+            <Droppable key={status.name} droppableId={status.name}>
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`flex-shrink-0 bg-white rounded-lg shadow-md p-2 min-h-[200px] transition-all duration-200 ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400' : ''}`}
+                  style={{ minWidth: 180, maxWidth: 260, width: '80vw', maxHeight: '80vh' }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-base md:text-lg" style={{ backgroundColor: status.color || '#3b82f6', color: '#fff', padding: '4px 12px', borderRadius: 8 }}>
+                      {status.display_name}
+                    </span>
+                    <span className="text-xs text-gray-500">{tasksByStatus[status.name]?.length || 0}</span>
+                  </div>
+                  {tasksByStatus[status.name]?.map((task, i) => (
+                    <Draggable key={task.id} draggableId={task.id.toString()} index={i}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className={`mb-2 ${snapshot.isDragging ? 'ring-2 ring-blue-400' : ''}`}
+                          style={{ touchAction: 'manipulation' }}
+                        >
+                          <TaskCard task={task} onClick={() => onTaskSelect(task)} />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          ))}
+        </div>
+      </DragDropContext>
+    </div>
+  );
+    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+      return;
     }
-  }, [tasks, statuses]);
 
-  // Handle drag and drop
-  const handleDragEnd = async (result: DropResult) => {
-    const { source, destination, draggableId } = result as DropResult & { draggableId: string };
-    if (!destination) return;
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-
-    const taskId = parseInt(draggableId);
-    const newStatus = destination.droppableId;
-
-    // Optimistic update
-    const task = tasks.find((t) => t.id === taskId);
-    if (task) {
-      const newTasksByStatus = { ...tasksByStatus };
-      newTasksByStatus[source.droppableId] = newTasksByStatus[source.droppableId].filter(t => t.id !== taskId);
-      const updatedTask = { ...task, status: newStatus };
-      newTasksByStatus[destination.droppableId] = [
-        ...newTasksByStatus[destination.droppableId].slice(0, destination.index),
-        updatedTask,
-        ...newTasksByStatus[destination.droppableId].slice(destination.index),
-      ];
-      setTasksByStatus(newTasksByStatus);
-    }
+    // @ts-ignore - react-beautiful-dnd types
+    const taskId = parseInt(result.draggableId);
+    const newStatus = destination.droppableId as any;
 
     try {
+      setLoading(true);
       await updateTask(taskId, { status: newStatus });
+      await fetchTasks();
     } catch (error) {
-      console.error('שגיאה בעדכון סטטוס:', error);
-      fetchTasks();
+      console.error('Failed to update task status:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-full pb-24">
-      {/* Header */}
-      <div className="p-4 pb-2">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">לוח משימות</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">גרור משימות למעלה/למטה לשינוי סטטוס, גלול ימינה/שמאלה לצפייה</p>
-        <p className="text-xs text-teal-600 dark:text-teal-400 mt-1">📊 מיון: לפי עדיפות (קריטי ← גבוה ← בינוני ← נמוך)</p>
+    <div className="p-4 md:p-6 bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 min-h-screen">
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-slideDown {
+          animation: slideDown 0.4s ease-out forwards;
+        }
+      `}</style>
+
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-slideDown">
+        <h1 className="text-4xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">🧱 לוח פעולות</h1>
+        {user?.role === 'admin' && (
+          <div className="text-sm text-gray-600 font-semibold bg-blue-50 border-l-4 border-blue-500 px-4 py-2 rounded">💡 גרור משימות בין עמודות לעדכון הסטטוס</div>
+        )}
       </div>
 
       {loading && (
-        <div className="p-4 m-4 bg-white dark:bg-slate-800 rounded-2xl text-center border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-teal-600 dark:text-teal-400">טוען...</span>
-          </div>
+        <div className="bg-gradient-to-r from-blue-100 to-purple-100 border-2 border-blue-300 rounded-xl p-4 mb-6 text-center shadow-md">
+          <p className="text-blue-700 font-bold">⏳ טוען...</p>
         </div>
       )}
 
-      {!loading && statuses.length === 0 && (
-        <div className="p-4 m-4 bg-white dark:bg-slate-800 rounded-2xl text-center text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-sm">
-          אין סטטוסים להצגה
-        </div>
-      )}
-
-      {/* Kanban Board - Horizontal scroll per status */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="space-y-4 px-4">
-          {statuses.length > 0 && statuses.filter(s => s && s.name).map((status) => {
-            const taskCount = tasksByStatus[status.name]?.length || 0;
-            
-            return (
-              <div 
-                key={status.name} 
-                className="bg-white dark:bg-slate-800/50 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700/50 shadow-sm"
-              >
-                {/* Status Header */}
-                <div 
-                  className="p-3 flex items-center justify-between"
-                  style={{ borderRightColor: status.color, borderRightWidth: '4px' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span 
-                      className="w-3 h-3 rounded-full flex-shrink-0" 
-                      style={{ backgroundColor: status.color }}
-                    />
-                    <span className="font-bold text-slate-900 dark:text-white text-sm">{status.display_name}</span>
-                  </div>
-                  <span className="px-2.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded-full text-xs font-bold text-slate-600 dark:text-slate-300">
-                    {taskCount}
-                  </span>
-                </div>
+        <div className="overflow-x-auto pb-4 -mx-4 md:mx-0">
+          <div className="flex gap-2 md:gap-3 min-w-fit px-4 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {statuses.map((status, idx) => (
+              <Droppable key={status.name} droppableId={status.name}>
+                {/* @ts-ignore - react-beautiful-dnd types */}
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`flex-shrink-0 w-56 sm:w-60 md:w-full rounded-2xl p-4 transition-all duration-300 shadow-lg border-2 transform hover:scale-105 ${
+                      snapshot.isDraggingOver 
+                        ? 'bg-gradient-to-br from-blue-200 to-purple-200 border-blue-500 scale-105' 
+                        : 'bg-white border-blue-100 hover:border-blue-300'
+                    }`}
+                    style={{ animationDelay: `${idx * 0.1}s` }}
+                  >
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex-1">
+                        <h2 className="font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent text-sm md:text-base mb-2">
+                          {status.display_name}
+                        </h2>
+                        <div
+                          className="h-2 w-16 rounded-full shadow-md"
+                          style={{ backgroundColor: status.color || '#3b82f6' }}
+                        />
+                      </div>
+                      <span className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
+                        {tasksByStatus[status.name]?.length || 0}
+                      </span>
+                    </div>
 
-                {/* Droppable Area with Horizontal Scroll */}
-                <Droppable droppableId={status.name} direction="horizontal">
-                  {(provided: DroppableProvided, snapshot: DroppableStateSnapshot) => (
-                    <div className="relative">
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`kanban-scroll overflow-x-auto overflow-y-hidden border-t border-slate-100 dark:border-slate-700/50 ${
-                          snapshot.isDraggingOver ? 'bg-teal-50 dark:bg-teal-900/20' : ''
-                        }`}
-                        style={{ paddingBottom: '36px' }}
-                      >
-                        <div className="flex gap-3 p-4 min-h-[180px]" style={{ minWidth: 'min-content' }}>
-                          {taskCount === 0 && !snapshot.isDraggingOver && (
-                            <div className="flex items-center justify-center w-full min-w-[200px] text-slate-400 dark:text-slate-500 text-sm">
-                              אין משימות
+                    <div className="space-y-2 md:space-y-3 min-h-96">
+                      {tasksByStatus[status.name]?.map((task, index) => (
+                        <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                          {/* @ts-ignore - react-beautiful-dnd types */}
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`transition-all duration-200 ${
+                                snapshot.isDragging 
+                                  ? 'opacity-50 scale-95 shadow-2xl' 
+                                  : 'opacity-100 shadow-sm'
+                              } hover:shadow-lg`}
+                              onClick={() => onTaskSelect(task)}
+                            >
+                              <TaskCard task={task} onClick={() => onTaskSelect(task)} />
                             </div>
                           )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
 
-                        {tasksByStatus[status.name]?.map((task, index) => (
-                          <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                            {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                onClick={() => onTaskSelect(task)}
-                                className={`flex-shrink-0 w-48 bg-slate-50 dark:bg-slate-700/70 rounded-xl p-3 cursor-pointer border border-slate-200 dark:border-transparent
-                                  hover:bg-white dark:hover:bg-slate-600/70 hover:shadow-md active:scale-[0.98] transition-all ${
-                                  snapshot.isDragging ? 'shadow-xl ring-2 ring-teal-500 scale-105 bg-white dark:bg-slate-700 z-50' : ''
-                                }`}
-                                style={{
-                                  ...provided.draggableProps.style,
-                                  touchAction: 'none',
-                                }}
-                              >
-                                {/* Header: Priority + Delete */}
-                                <div className="flex items-start justify-between gap-1 mb-2">
-                                  <span 
-                                    className="inline-block px-2 py-0.5 rounded text-[10px] font-bold text-white"
-                                    style={{ backgroundColor: priorityColors[task.priority] || '#64748b' }}
-                                  >
-                                    {priorityLabels[task.priority] || task.priority}
-                                  </span>
-                                  {isManager && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setTaskToDelete(task); }}
-                                      className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                                      title="מחק משימה"
-                                    >
-                                      🗑️
-                                    </button>
-                                  )}
-                                </div>
-
-                                {/* Task Title */}
-                                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-2 line-clamp-2">
-                                  {task.title}
-                                </h4>
-
-                                {/* Tags */}
-                                {task.tags && task.tags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mb-2">
-                                    {task.tags.slice(0, 2).map((tag: any) => (
-                                      <span
-                                        key={tag.id}
-                                        className="px-1.5 py-0.5 rounded text-[9px] font-medium text-white"
-                                        style={{ 
-                                          background: tag.color2 
-                                            ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
-                                            : tag.color 
-                                        }}
-                                      >
-                                        {tag.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Footer: Assignee & Due Date */}
-                                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-auto pt-2 border-t border-slate-200 dark:border-slate-600/50">
-                                  {task.assignees && task.assignees.length > 0 ? (
-                                    <div className="flex -space-x-1 rtl:space-x-reverse">
-                                      {task.assignees.slice(0, 2).map((assignee: any) => (
-                                        <span 
-                                          key={assignee.id}
-                                          className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-[9px] text-white font-bold border border-white dark:border-slate-700"
-                                          title={assignee.name}
-                                        >
-                                          {assignee.name.charAt(0)}
-                                        </span>
-                                      ))}
-                                      {task.assignees.length > 2 && (
-                                        <span className="w-5 h-5 rounded-full bg-slate-500 flex items-center justify-center text-[9px] text-white font-bold border border-white dark:border-slate-700">
-                                          +{task.assignees.length - 2}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ) : task.assigned_to_name ? (
-                                    <span className="truncate max-w-[60px]">{task.assigned_to_name}</span>
-                                  ) : (
-                                    <span className="text-slate-400">—</span>
-                                  )}
-                                  
-                                  {task.due_date ? (
-                                    <span className={`${
-                                      new Date(task.due_date) < new Date() ? 'text-red-500 font-bold' : ''
-                                    }`}>
-                                      {new Date(task.due_date).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}
-                                    </span>
-                                  ) : (
-                                    <span>—</span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                        </div>
-                      </div>
-                      {/* Scroll Indicator */}
-                      {taskCount > 1 && (
-                        <div className="absolute bottom-1 left-4 right-4 flex items-center justify-center gap-2 text-xs text-teal-500 dark:text-teal-400 pointer-events-none">
-                          <span>→</span>
-                          <span className="bg-teal-500/20 px-2 py-0.5 rounded-full">גלול לצדדים</span>
-                          <span>←</span>
+                      {(!tasksByStatus[status.name] || tasksByStatus[status.name].length === 0) && (
+                        <div className="text-center py-12 text-gray-300">
+                          <p className="text-sm font-semibold">✨ اين مشام</p>
+                          <p className="text-xs mt-1">اسحب المهام هنا</p>
                         </div>
                       )}
                     </div>
-                  )}
-                </Droppable>
-              </div>
-            );
-          })}
-        </div>
-      </DragDropContext>
-
-      {/* Delete Confirmation Modal */}
-      {taskToDelete && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4" onClick={() => setTaskToDelete(null)}>
-          <div 
-            className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center mb-4">
-              <span className="text-4xl">⚠️</span>
-              <h3 className="text-lg font-bold text-white mt-2">מחיקת משימה</h3>
-              <p className="text-slate-400 mt-2">
-                האם אתה בטוח שברצונך למחוק את המשימה "{taskToDelete.title}"?
-              </p>
-              <p className="text-red-400 text-sm mt-1">פעולה זו אינה ניתנת לביטול</p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setTaskToDelete(null)}
-                className="flex-1 py-3 bg-slate-700 text-slate-300 rounded-xl font-bold hover:bg-slate-600 transition-colors"
-              >
-                ביטול
-              </button>
-              <button
-                onClick={handleDeleteTask}
-                className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-500 transition-colors flex items-center justify-center gap-2"
-              >
-                <span>🗑️</span>
-                <span>מחק</span>
-              </button>
-            </div>
+                  </div>
+                )}
+              </Droppable>
+            ))}
           </div>
         </div>
-      )}
+      </DragDropContext>
     </div>
   );
 }

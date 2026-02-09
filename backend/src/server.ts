@@ -8,10 +8,8 @@ import taskRoutes from './routes/tasks';
 import dashboardRoutes from './routes/dashboard';
 import statusRoutes from './routes/statuses';
 import tagsRoutes from './routes/tags';
-import pushRoutes from './routes/push';
 import { verifyEmailConfig } from './services/emailService';
 import { startNotificationService } from './services/notificationService';
-import { startPushScheduler } from './services/pushService';
 
 dotenv.config();
 
@@ -42,7 +40,6 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/statuses', statusRoutes);
 app.use('/api/tags', tagsRoutes);
-app.use('/api/push', pushRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -52,20 +49,11 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   
-  // Verify email configuration (async, non-blocking)
-  verifyEmailConfig().then((success) => {
-    if (!success) {
-      console.log('⚠️  Email service not configured - check EMAIL_* variables');
-    }
-  }).catch((error) => {
-    console.log('❌ Email verification failed:', error.message);
-  });
+  // Verify email configuration
+  verifyEmailConfig();
   
   // Start background notification service
   startNotificationService();
-  
-  // Start push notification scheduler (9:00 and 22:00 reminders)
-  startPushScheduler();
   
   console.log(`📚 API Documentation:`);
   console.log(`   POST /api/auth/register - Register new user`);

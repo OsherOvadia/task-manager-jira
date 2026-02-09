@@ -4,24 +4,11 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-// Predefined color options for tags
-const colorOptions = [
-  { name: 'ירוק', color: '#10b981' },
-  { name: 'כחול', color: '#3b82f6' },
-  { name: 'סגול', color: '#8b5cf6' },
-  { name: 'כתום', color: '#f97316' },
-  { name: 'אדום', color: '#ef4444' },
-  { name: 'ורוד', color: '#ec4899' },
-  { name: 'טורקיז', color: '#14b8a6' },
-  { name: 'צהוב', color: '#eab308' },
-];
-
 export default function TagManagementModal({ onClose }: any) {
   const { user, token } = useAuthStore();
   const { tags, fetchTags } = useTagStore();
   const [newTagName, setNewTagName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(colorOptions[0].color);
-  const [selectedColor2, setSelectedColor2] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#3b82f6');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -35,7 +22,7 @@ export default function TagManagementModal({ onClose }: any) {
   const handleAddTag = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTagName.trim()) {
-      setError('יש להזין שם לתגית');
+      setError('יש להכניס שם לתגיה');
       return;
     }
 
@@ -49,197 +36,148 @@ export default function TagManagementModal({ onClose }: any) {
         {
           restaurantId: user?.restaurant_id,
           name: newTagName.trim(),
-          color: selectedColor,
-          color2: selectedColor2 || null,
+          color: newTagColor,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSuccess('תגית נוצרה בהצלחה');
+      setSuccess('✓ תגיה נוצרה בהצלחה!');
       setNewTagName('');
-      setSelectedColor(colorOptions[0].color);
-      setSelectedColor2('');
+      setNewTagColor('#3b82f6');
       
+      // Refresh tags list
       if (user?.restaurant_id) {
         fetchTags(user.restaurant_id);
       }
 
+      // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'שגיאה ביצירת תגית');
+      setError(err.response?.data?.error || 'Failed to create tag');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteTag = async (tagId: number) => {
-    if (!window.confirm('האם למחוק את התגית?')) return;
+    if (!window.confirm('?האם אתה בטוח שברצונך למחוק את התגיה')) return;
 
     try {
       await axios.delete(`${API_BASE}/tags/${tagId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setSuccess('התגית נמחקה');
+      setSuccess('✓ התגיה נמחקה בהצלחה!');
       
+      // Refresh tags list
       if (user?.restaurant_id) {
         fetchTags(user.restaurant_id);
       }
 
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'שגיאה במחיקת תגית');
+      setError(err.response?.data?.error || 'Failed to delete tag');
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-end justify-center z-50">
-      <div className="bg-slate-800 w-full max-h-[90vh] rounded-t-2xl overflow-hidden animate-slideUp">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">ניהול תגיות</h2>
-          <button onClick={onClose} className="text-slate-400 text-2xl">✕</button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full">
+        <div className="p-6 border-b flex justify-between items-center bg-gradient-to-r from-yellow-400 to-orange-400">
+          <h2 className="text-2xl font-bold text-white">🏷️ ניהול תגיות</h2>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-gray-200 text-2xl font-bold"
+          >
+            ✕
+          </button>
         </div>
 
-        <div className="p-4 space-y-6 overflow-y-auto max-h-[calc(90vh-60px)]">
+        <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
           {/* Add New Tag Form */}
-          <div className="bg-slate-700 rounded-xl p-4">
-            <h3 className="text-sm font-bold text-teal-400 mb-4">תגית חדשה</h3>
-            <form onSubmit={handleAddTag} className="space-y-4">
-              <input
-                type="text"
-                placeholder="שם התגית"
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-600 border border-slate-500 rounded-xl text-white placeholder-slate-400"
-              />
-
-              {/* Primary Color */}
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-3">➕ יצירת תגיה חדשה</h3>
+            <form onSubmit={handleAddTag} className="space-y-3">
               <div>
-                <label className="block text-sm text-slate-400 mb-2">צבע ראשי</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {colorOptions.map((c) => (
-                    <button
-                      key={c.color}
-                      type="button"
-                      onClick={() => setSelectedColor(c.color)}
-                      className={`h-10 rounded-lg transition-all ${
-                        selectedColor === c.color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-700' : ''
-                      }`}
-                      style={{ backgroundColor: c.color }}
-                    />
-                  ))}
-                </div>
+                <input
+                  type="text"
+                  placeholder="שם התגיה"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  className="w-full px-4 py-2 border-2 border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                />
               </div>
 
-              {/* Secondary Color (for gradient) */}
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">צבע שני (אופציונלי - ליצירת גרדיאנט)</label>
-                <div className="grid grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedColor2('')}
-                    className={`h-10 rounded-lg border-2 border-dashed border-slate-500 text-slate-500 text-xs ${
-                      !selectedColor2 ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-700' : ''
-                    }`}
-                  >
-                    ללא
-                  </button>
-                  {colorOptions.map((c) => (
-                    <button
-                      key={c.color + '2'}
-                      type="button"
-                      onClick={() => setSelectedColor2(c.color)}
-                      className={`h-10 rounded-lg transition-all ${
-                        selectedColor2 === c.color ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-700' : ''
-                      }`}
-                      style={{ backgroundColor: c.color }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Preview */}
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">תצוגה מקדימה</label>
-                <span
-                  className="inline-block px-4 py-2 rounded-lg text-white font-bold"
-                  style={{
-                    background: selectedColor2
-                      ? `linear-gradient(135deg, ${selectedColor} 0%, ${selectedColor2} 100%)`
-                      : selectedColor,
-                  }}
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  value={newTagColor}
+                  onChange={(e) => setNewTagColor(e.target.value)}
+                  className="w-12 h-10 rounded cursor-pointer border-2 border-yellow-300"
+                  title="בחר צבע לתגיה"
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 disabled:opacity-50"
                 >
-                  {newTagName || 'שם התגית'}
-                </span>
+                  {loading ? '⏳ יוצר...' : '✓ צור תגיה'}
+                </button>
               </div>
 
               {error && (
-                <div className="p-3 bg-orange-500/20 border border-orange-500 rounded-xl text-orange-400 text-sm">
-                  {error}
+                <div className="bg-red-100 text-red-700 p-3 rounded-lg text-sm font-semibold">
+                  ⚠️ {error}
                 </div>
               )}
 
               {success && (
-                <div className="p-3 bg-teal-500/20 border border-teal-500 rounded-xl text-teal-400 text-sm">
+                <div className="bg-green-100 text-green-700 p-3 rounded-lg text-sm font-semibold">
                   {success}
                 </div>
               )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-teal-600 text-white rounded-xl font-bold disabled:opacity-50"
-              >
-                {loading ? 'יוצר...' : 'יצירת תגית'}
-              </button>
             </form>
           </div>
 
-          {/* Existing Tags */}
+          {/* Existing Tags List */}
           <div>
-            <h3 className="text-sm font-bold text-slate-400 mb-3">תגיות קיימות ({tags.length})</h3>
-            {tags.length === 0 ? (
-              <div className="bg-slate-700 rounded-xl p-6 text-center">
-                <p className="text-slate-500">אין תגיות עדיין</p>
-              </div>
-            ) : (
+            <h3 className="text-lg font-bold text-gray-800 mb-3">📋 תגיות קיימות</h3>
+            {tags && tags.length > 0 ? (
               <div className="space-y-2">
                 {tags.map((tag) => (
                   <div
                     key={tag.id}
-                    className="flex items-center justify-between p-3 bg-slate-700 rounded-xl"
+                    className="flex items-center justify-between p-3 rounded-lg border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition"
                   >
-                    <span
-                      className="px-3 py-1 rounded-lg text-white font-bold text-sm"
-                      style={{
-                        background: tag.color2
-                          ? `linear-gradient(135deg, ${tag.color} 0%, ${tag.color2} 100%)`
-                          : tag.color,
-                      }}
-                    >
-                      {tag.name}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-6 h-6 rounded-full border-2 border-gray-300"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      <span className="font-semibold text-gray-800">{tag.name}</span>
+                    </div>
                     <button
                       onClick={() => handleDeleteTag(tag.id)}
-                      className="px-3 py-1 bg-orange-500/20 text-orange-400 rounded-lg text-sm font-bold"
+                      className="px-3 py-1 text-sm bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-all duration-300 transform hover:scale-110 active:scale-95"
                     >
-                      מחיקה
+                      ✕ מחק
                     </button>
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-center text-gray-500 py-6 font-semibold">אין תגיות עדיין</p>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t bg-gray-50 flex justify-center">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-slate-700 text-slate-300 rounded-xl font-bold"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all duration-300 transform hover:scale-105 active:scale-95"
           >
-            סגירה
+            סגור
           </button>
         </div>
       </div>

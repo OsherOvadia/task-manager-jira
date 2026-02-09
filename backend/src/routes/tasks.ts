@@ -1,48 +1,8 @@
 import express, { Response } from 'express';
 import db from '../database';
 import { AuthRequest, authenticateToken, authorize } from '../middleware';
-import { sendAssignmentNotification } from '../services/emailService';
 
 const router = express.Router();
-
-// Helper: Get assignees for a task
-function getTaskAssignees(taskId: number): any[] {
-  return db.prepare(`
-    SELECT u.id, u.name, u.email
-    FROM task_assignments ta
-    JOIN users u ON ta.user_id = u.id
-    WHERE ta.task_id = ?
-  `).all(taskId) as any[];
-}
-
-// Helper: Set task assignees (handles both single and multiple)
-function setTaskAssignees(taskId: number, assignees: number | number[] | null, restaurantId: number): any[] {
-  // Remove existing assignments
-  db.prepare('DELETE FROM task_assignments WHERE task_id = ?').run(taskId);
-  
-  if (!assignees) return [];
-  
-  // Normalize to array
-  const assigneeIds = Array.isArray(assignees) ? assignees : [assignees];
-  
-  // Add new assignments
-  const insertStmt = db.prepare('INSERT INTO task_assignments (task_id, user_id) VALUES (?, ?)');
-  assigneeIds.forEach(userId => {
-    if (userId) {
-      try {
-        insertStmt.run(taskId, userId);
-      } catch (e) {
-        // Ignore duplicates
-      }
-    }
-  });
-  
-  // Also update the legacy assigned_to field with the first assignee for backward compatibility
-  const firstAssignee = assigneeIds[0] || null;
-  db.prepare('UPDATE tasks SET assigned_to = ? WHERE id = ?').run(firstAssignee, taskId);
-  
-  return getTaskAssignees(taskId);
-}
 
 // Get all team members for a restaurant (for assignment dropdown)
 router.get('/team/members', authenticateToken, (req: AuthRequest, res: Response) => {
@@ -79,37 +39,14 @@ router.get('/', authenticateToken, (req: AuthRequest, res: Response) => {
     }
 
     if (assigned) {
-      // Filter by tasks that have this user assigned (using junction table)
-      query += ` AND EXISTS (SELECT 1 FROM task_assignments ta WHERE ta.task_id = t.id AND ta.user_id = ?)`;
+      query += ` AND t.assigned_to = ?`;
       params.push(parseInt(assigned));
     }
 
     query += ` ORDER BY t.due_date ASC`;
 
-    const tasks = db.prepare(query).all(...params) as any[];
-    
-    // Fetch tags and assignees for each task
-    const tasksWithDetails = tasks.map((task: any) => {
-      const tags = db.prepare(`
-        SELECT tg.* FROM tags tg
-        JOIN task_tags tt ON tg.id = tt.tag_id
-        WHERE tt.task_id = ?
-      `).all(task.id);
-      
-      const assignees = getTaskAssignees(task.id);
-      
-      // Generate combined name for display
-      const assigneeNames = assignees.map((a: any) => a.name).join(', ');
-      
-      return { 
-        ...task, 
-        tags,
-        assignees,
-        assigned_to_name: assigneeNames || task.assigned_to_name || null
-      };
-    });
-    
-    res.json(tasksWithDetails);
+    const tasks = db.prepare(query).all(...params);
+    res.json(tasks);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch tasks' });
   }
@@ -140,96 +77,40 @@ router.get('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
     `).all(task.id);
 
     const photos = db.prepare('SELECT * FROM photos WHERE task_id = ? ORDER BY uploaded_at DESC').all(task.id);
-    
-    const tags = db.prepare(`
-      SELECT tg.* FROM tags tg
-      JOIN task_tags tt ON tg.id = tt.tag_id
-      WHERE tt.task_id = ?
-    `).all(task.id);
-    
-    const assignees = getTaskAssignees(task.id);
-    const assigneeNames = assignees.map((a: any) => a.name).join(', ');
 
-    res.json({ 
-      ...task, 
-      checklists, 
-      comments, 
-      photos, 
-      tags,
-      assignees,
-      assigned_to_name: assigneeNames || task.assigned_to_name || null
-    });
+    res.json({ ...task, checklists, comments, photos });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch task' });
   }
 });
 
 // Create task
-router.post('/', authenticateToken, authorize(['admin', 'maintainer']), async (req: AuthRequest, res: Response) => {
+router.post('/', authenticateToken, authorize(['admin', 'maintainer']), (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, assigned_to, assignees, priority, due_date, recurrence, estimated_time, tags } = req.body;
-
-    // Support both single assigned_to and multiple assignees
-    const assigneeList = assignees || (assigned_to ? [assigned_to] : []);
-    const hasAssignees = assigneeList.length > 0;
+    const { title, description, assigned_to, priority, due_date, recurrence } = req.body;
 
     const stmt = db.prepare(`
       INSERT INTO tasks (
         title, description, assigned_to, restaurant_id, priority, 
-        status, due_date, recurrence, estimated_time, created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        status, due_date, recurrence, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
       title,
       description || null,
-      assigneeList[0] || null, // First assignee for backward compatibility
+      assigned_to || null,
       req.user?.restaurantId,
       priority || 'medium',
-      hasAssignees ? 'assigned' : 'planned',
+      assigned_to ? 'assigned' : 'planned',
       due_date || null,
       recurrence || 'once',
-      estimated_time || null,
       req.user?.id
     );
 
-    const taskId = result.lastInsertRowid as number;
-
-    // Add multiple assignees
-    if (hasAssignees) {
-      setTaskAssignees(taskId, assigneeList, req.user?.restaurantId || 0);
-    }
-
-    // Add tags if provided
-    if (tags && Array.isArray(tags) && tags.length > 0) {
-      tags.forEach((tagId: number) => {
-        db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)').run(taskId, tagId);
-      });
-    }
-
-    // Send email notifications to all assignees
-    if (hasAssignees) {
-      const restaurant = db.prepare('SELECT name FROM restaurants WHERE id = ?').get(req.user?.restaurantId) as any;
-      const createdBy = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user?.id) as any;
-      
-      for (const userId of assigneeList) {
-        const assignedUser = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(userId) as any;
-        if (assignedUser && assignedUser.email) {
-          sendAssignmentNotification(
-            assignedUser.email,
-            title,
-            createdBy?.name || 'Unknown',
-            restaurant?.name || 'Restaurant'
-          ).catch((err: any) => console.error('Failed to send email:', err));
-        }
-      }
-    }
-
-    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as any;
-    const finalAssignees = getTaskAssignees(taskId);
-    res.status(201).json({ ...task, assignees: finalAssignees });
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(result.lastInsertRowid);
+    res.status(201).json(task);
   } catch (error) {
-    console.error('Failed to create task:', error);
     res.status(500).json({ error: 'Failed to create task' });
   }
 });
@@ -237,7 +118,7 @@ router.post('/', authenticateToken, authorize(['admin', 'maintainer']), async (r
 // Update task
 router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, assigned_to, assignees, priority, status, due_date, estimated_time, tags } = req.body;
+    const { title, description, assigned_to, priority, status, due_date, estimated_time, tags } = req.body;
 
     const task = db.prepare('SELECT * FROM tasks WHERE id = ? AND restaurant_id = ?')
       .get(req.params.id, req.user?.restaurantId) as any;
@@ -248,32 +129,14 @@ router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
 
     // Check authorization: admin/maintainer can do anything, workers can only update their own assignments
     const isManager = ['admin', 'maintainer'].includes(req.user?.role || '');
-    const currentAssignees = getTaskAssignees(task.id);
-    const isAssignedToTask = currentAssignees.some((a: any) => a.id === req.user?.id) || task.assigned_to === req.user?.id;
+    const isAssignedToTask = task.assigned_to === req.user?.id;
 
     if (!isManager && !isAssignedToTask) {
       return res.status(403).json({ error: 'Not authorized to update this task' });
     }
 
-    // Support both single assigned_to and multiple assignees
-    const newAssigneeList = assignees || (assigned_to !== undefined ? (assigned_to ? [assigned_to] : []) : null);
-    const hasNewAssignees = newAssigneeList && newAssigneeList.length > 0;
-
-    // Auto-change status to 'assigned' when assigning someone to an unassigned task
-    let newStatus = status || task.status;
+    const newStatus = status || task.status;
     const oldStatus = task.status;
-    
-    // If task is being assigned and status is 'planned', change to 'assigned'
-    if (hasNewAssignees && oldStatus === 'planned') {
-      if (!status || status === 'planned') {
-        newStatus = 'assigned';
-      }
-    }
-    
-    // If all assignees removed, change status back to planned
-    if (newAssigneeList && newAssigneeList.length === 0 && oldStatus === 'assigned') {
-      newStatus = 'planned';
-    }
 
     // Track status change
     if (newStatus !== oldStatus) {
@@ -283,15 +146,22 @@ router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
       ).run(req.params.id, oldStatus, newStatus, req.user?.id);
     }
 
+    // Get assigned user info for email notification
+    let assignedUser: any = null;
+    if (assigned_to && assigned_to !== task.assigned_to) {
+      assignedUser = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(assigned_to) as any;
+    }
+
     const updateStmt = db.prepare(`
       UPDATE tasks
-      SET title = ?, description = ?, priority = ?, status = ?, due_date = ?, estimated_time = ?
+      SET title = ?, description = ?, assigned_to = ?, priority = ?, status = ?, due_date = ?, estimated_time = ?
       WHERE id = ?
     `);
 
     updateStmt.run(
       title || task.title,
       description !== undefined ? description : task.description,
+      assigned_to !== undefined ? assigned_to : task.assigned_to,
       priority || task.priority,
       newStatus,
       due_date || task.due_date,
@@ -299,58 +169,33 @@ router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
       req.params.id
     );
 
-    // Update assignees if provided
-    if (newAssigneeList !== null) {
-      const oldAssigneeIds = currentAssignees.map((a: any) => a.id);
-      const addedAssignees = newAssigneeList.filter((id: number) => !oldAssigneeIds.includes(id));
-      
-      setTaskAssignees(parseInt(req.params.id), newAssigneeList, req.user?.restaurantId || 0);
-      
-      // Send email notifications to newly added assignees
-      if (addedAssignees.length > 0) {
-        const restaurant = db.prepare('SELECT name FROM restaurants WHERE id = ?').get(req.user?.restaurantId) as any;
-        const createdBy = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user?.id) as any;
-        
-        for (const userId of addedAssignees) {
-          const assignedUser = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(userId) as any;
-          if (assignedUser && assignedUser.email) {
-            sendAssignmentNotification(
-              assignedUser.email,
-              title || task.title,
-              createdBy?.name || 'Unknown',
-              restaurant?.name || 'Restaurant'
-            ).catch((err: any) => console.error('Failed to send email:', err));
-          }
-        }
-      }
+    // Send email notification if assignment changed
+    if (assignedUser && assignedUser.email) {
+      const { sendAssignmentNotification } = require('../services/emailService');
+      const restaurant = db.prepare('SELECT name FROM restaurants WHERE id = ?').get(req.user?.restaurantId) as any;
+      const createdBy = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user?.id) as any;
+      sendAssignmentNotification(
+        assignedUser.email,
+        title || task.title,
+        createdBy?.name || 'Unknown',
+        restaurant?.name || 'Restaurant'
+      ).catch((err: any) => console.error('Failed to send email:', err));
     }
 
     // Update tags if provided
     if (tags && Array.isArray(tags)) {
+      // Remove existing tags
       db.prepare('DELETE FROM task_tags WHERE task_id = ?').run(req.params.id);
+      // Add new tags
       tags.forEach((tagId: number) => {
         db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)')
           .run(req.params.id, tagId);
       });
     }
 
-    const finalAssignees = getTaskAssignees(parseInt(req.params.id));
-    const assigneeNames = finalAssignees.map((a: any) => a.name).join(', ');
-    
-    const updated = db.prepare(`
-      SELECT t.*, creator.name as created_by_name
-      FROM tasks t
-      LEFT JOIN users creator ON t.created_by = creator.id
-      WHERE t.id = ?
-    `).get(req.params.id) as any;
-    
-    res.json({ 
-      ...updated, 
-      assignees: finalAssignees,
-      assigned_to_name: assigneeNames 
-    });
+    const updated = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id);
+    res.json(updated);
   } catch (error) {
-    console.error('Failed to update task:', error);
     res.status(500).json({ error: 'Failed to update task' });
   }
 });
@@ -358,20 +203,11 @@ router.put('/:id', authenticateToken, (req: AuthRequest, res: Response) => {
 // Mark task as completed
 router.put('/:id/complete', authenticateToken, (req: AuthRequest, res: Response) => {
   try {
-    // Check if user is assigned to this task
-    const assignees = getTaskAssignees(parseInt(req.params.id));
-    const isAssigned = assignees.some((a: any) => a.id === req.user?.id);
-    
-    const task = db.prepare('SELECT * FROM tasks WHERE id = ? AND restaurant_id = ?')
-      .get(req.params.id, req.user?.restaurantId) as any;
+    const task = db.prepare('SELECT * FROM tasks WHERE id = ? AND assigned_to = ?')
+      .get(req.params.id, req.user?.id);
 
     if (!task) {
       return res.status(404).json({ error: 'Task not found' });
-    }
-    
-    // Allow if user is assigned (either via junction table or legacy field)
-    if (!isAssigned && task.assigned_to !== req.user?.id) {
-      return res.status(403).json({ error: 'Not authorized to complete this task' });
     }
 
     const updateStmt = db.prepare(`
@@ -390,7 +226,7 @@ router.put('/:id/complete', authenticateToken, (req: AuthRequest, res: Response)
 });
 
 // Verify task completion
-router.put('/:id/verify', authenticateToken, authorize(['manager', 'admin', 'maintainer']), (req: AuthRequest, res: Response) => {
+router.put('/:id/verify', authenticateToken, authorize(['manager', 'admin']), (req: AuthRequest, res: Response) => {
   try {
     const { comment } = req.body;
 
@@ -425,7 +261,7 @@ router.put('/:id/verify', authenticateToken, authorize(['manager', 'admin', 'mai
 });
 
 // Delete task
-router.delete('/:id', authenticateToken, authorize(['admin', 'manager', 'maintainer']), (req: AuthRequest, res: Response) => {
+router.delete('/:id', authenticateToken, authorize(['admin', 'manager']), (req: AuthRequest, res: Response) => {
   try {
     const task = db.prepare('SELECT * FROM tasks WHERE id = ? AND restaurant_id = ?')
       .get(req.params.id, req.user?.restaurantId);
